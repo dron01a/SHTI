@@ -9,9 +9,9 @@
 
 #endif
 
-#define CAPACITY 8
+#define CAPACITY 4
 #define REHASH_COEF 1
-#define SIZE_INC_MULTIPLIER 1.5
+#define SIZE_INC_MULTIPLIER 2
 
 namespace shti {
 
@@ -31,7 +31,7 @@ namespace shti {
 
 			// деструктор класса
 			~node() {
-				_next = nullptr;
+				//_next = nullptr;
 				delete _next;
 			}
 
@@ -166,8 +166,7 @@ namespace shti {
 		}
 
 		iterator insert(key_type key, value_type value) {
-			node<key_type, value_type> _node(key, value);
-			return emplace_implementation(_node.key(), _node.value());
+			return emplace_implementation(key, value);
 		}
 	
 	private:
@@ -184,20 +183,22 @@ namespace shti {
 			size_type last_capacity = _capacity; 
 			_capacity = new_size;
 			node<key_type, value_type> ** temp_data = new node<key_type, value_type> *[new_size];
-			for (size_type i = 0; i < new_size; ++i) {
+			for (size_type i = 0; i < new_size / 2; ++i) {
 				temp_data[i] = nullptr;
+				temp_data[new_size - 1 - i] = nullptr;
 			}
 			_size = 0;
 			std::swap(data, temp_data); // меняем местами области памяти
 			for (size_type i = 0; i < last_capacity; ++i) {
-				node<key_type, value_type> * cur_node = temp_data[i];
+				node<key_type, value_type> * cur_node = std::move(temp_data[i]);
 				while (cur_node != nullptr) {
 					emplace_implementation(cur_node->key(), cur_node->value());
-					cur_node = cur_node->next();
+					cur_node = std::move(cur_node->next());
 				}
 			}
-			for (size_type i = 0; i < last_capacity; ++i) { // очищаем выделенную память
+			for (size_type i = 0; i < last_capacity / 2; ++i) { // очищаем выделенную память
 				delete temp_data[i];
+				delete temp_data[last_capacity - 1 -i ];
 			}
 			delete[] temp_data;
 		}

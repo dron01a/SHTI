@@ -27,28 +27,25 @@ struct result_struct {
 	DURATION_TYPE median;
 };
 
-/*
- тест скорости работы метода insert
- данный тест проводится без коллизий
-*/
+// С‚РµСЃС‚ СЃРєРѕСЂРѕСЃС‚Рё СЂР°Р±РѕС‚С‹ РјРµС‚РѕРґР° insert
 void insert_test_int_int(size_t items_count, size_t n);
 
-// тест хеш таблицы
+// С‚РµСЃС‚ С…РµС€ С‚Р°Р±Р»РёС†С‹
 duration ht_test_insert(size_t items_count);
 
-// тест хеш таблицы с пользовательской функцией
+// С‚РµСЃС‚ С…РµС€ С‚Р°Р±Р»РёС†С‹ СЃ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРѕР№ С„СѓРЅРєС†РёРµР№
 duration ht_test_insert_ch(size_t items_count);
 
-// тест std::map
+// С‚РµСЃС‚ std::map
 duration map_test_insert(size_t items_count);
 
-// тест std::multimap
+// С‚РµСЃС‚ std::multimap
 duration multimap_test_insert(size_t items_count);
 
-// тест std::unordered_map
+// С‚РµСЃС‚ std::unordered_map
 duration unordered_map_test_insert(size_t items_count);
 
-// талица с тестовыми функциями
+// С‚Р°Р»РёС†Р° СЃ С‚РµСЃС‚РѕРІС‹РјРё С„СѓРЅРєС†РёСЏРјРё
 func_map test_insert_map{
 	{ "ht test + std::hash", ht_test_insert },
 	{ "ht test + custrom hash", ht_test_insert_ch },
@@ -68,6 +65,11 @@ std::vector<std::pair<int, int>> tested_data_count{
 	std::make_pair(5000000, 10),
 };
 
+/*
+
+	РўРµСЃС‚ РїСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚Рё РјРµС‚РѕРґР° insert РїСЂРѕРІРѕРґРёС‚СЃСЏ РїСЂРё РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРё С€Р°Р±Р»РѕРЅР° <int, int>
+
+*/
 
 int main() {
 
@@ -128,7 +130,7 @@ duration ht_test_insert(size_t items_count){
 
 duration ht_test_insert_ch(size_t items_count){
 	struct int_hash{
-		size_t operator()(int i) { return abs(i); }; // простая хеш функция
+		size_t operator()(int i) { return abs(i); }; // РїСЂРѕСЃС‚Р°СЏ С…РµС€ С„СѓРЅРєС†РёСЏ
 	};
 	auto start_ht = std::chrono::steady_clock::now();
 	shti::hash_table<int, int, int_hash> ht;
