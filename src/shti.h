@@ -164,11 +164,21 @@ namespace shti {
 		iterator insert(const node<key_type, value_type> & _node) {
 			return emplace_implementation(_node.key(), _node.value());
 		}
-
 		iterator insert(key_type key, value_type value) {
 			return emplace_implementation(key, value);
 		}
-	
+
+		// выполн€ет поиск элемента в таблице по ключу
+		
+		template <typename _key>
+		iterator find(const _key &key) {
+			return find_implementation(key); 
+		}
+		template <typename _key>
+		const_iterator find(const _key &key) const {
+			return find_implementation(key);
+		}
+
 	private:
 
 		// измен€ет размер 
@@ -204,8 +214,8 @@ namespace shti {
 		}
 
 		// шаблон ставки элементов в таблицу
-		template <typename key_type, typename ... elements>
-		iterator emplace_implementation(const key_type & key, elements &&... elem) {
+		template <typename _key, typename ... elements>
+		iterator emplace_implementation(const _key & key, elements &&... elem) {
 			if (_size + 1 > int(rehash_coef * _capacity)) {
 				rehash(_capacity * size_multiplier);
 			}
@@ -222,6 +232,27 @@ namespace shti {
 			cur_node->_next = new node<key_type, value_type>(key, value_type(std::forward<elements>(elem)...));
 			_size++;
 			return iterator(this, cur_node->next()); // возвращаем итератор на вставленный элемент
+		}
+
+		// шаблон поиска элемента
+		template <typename _key>
+		iterator find_implementation(const _key & key) {
+			size_type index = key_to_index(key); // получаем индекс элемента
+			if (data[index] == nullptr) {
+				return end();
+			}
+			node<key_type, value_type> * cur_node = data[index];
+			while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
+				if (cur_node->key() == key) {
+					return iterator(this, cur_node);
+				}
+				cur_node = cur_node->next();
+			}
+			return end();
+		}
+		template <typename _key> 
+		const_iterator  find_implementation(const _key & key) { 
+			const_cast<hash_table *>(this)->find_implementation(key);
 		}
 
 		// переход от ключа к индексу

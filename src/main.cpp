@@ -71,11 +71,24 @@ std::vector<std::pair<int, int>> tested_data_count{
 
 int main() {
 
-	std::vector<std::vector<result_struct>> res_str_vect;
+	/*std::vector<std::vector<result_struct>> res_str_vect;
 	for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
 		insert_test_int_int(it->first, it->second);
 	}
-
+*/
+	struct int_hash {
+		size_t operator()(int i) { return abs(i); }; // простая хеш функция
+	};
+	shti::hash_table<int, int, int_hash> ht;
+	for (size_t i = 0; i < 1000000; ++i) {
+		ht.insert(i, i);
+	}
+	ht.insert(-5, 10);
+	auto start_ht = std::chrono::steady_clock::now();
+	auto find_res = ht.find(-5);
+	auto stop_ht = std::chrono::steady_clock::now();
+	auto duration_ht = stop_ht - start_ht;
+	std::cout << duration_ht.count() << std::endl;
 	return 0;
 }
 
