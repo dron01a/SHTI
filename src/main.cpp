@@ -20,13 +20,6 @@ typedef std::chrono::duration<DURATION_TYPE, DURATION_PREF> duration;
 typedef std::vector<DURATION_TYPE> time_duration_vect;
 typedef std::map <std::string, std::function<duration(size_t)>> func_map;
 
-struct result_struct {
-	DURATION_TYPE min;
-	DURATION_TYPE max;
-	DURATION_TYPE midle;
-	DURATION_TYPE median;
-};
-
 /*
  тест скорости работы метода insert
  данный тест проводится без коллизий
@@ -68,14 +61,42 @@ std::vector<std::pair<int, int>> tested_data_count{
 	std::make_pair(5000000, 10),
 };
 
+/*
+	тест скорости работы метода find
+	данный тест проводится с коллизий
+*/
+void find_test_int_int(size_t items_count, size_t n);
+
+// тест хеш таблицы
+duration ht_test_find(size_t items_count);
+
+// тест хеш таблицы с пользовательской функцией
+duration ht_test_find_ch(size_t items_count);
+
+// тест std::map
+duration map_test_find(size_t items_count);
+
+// тест std::multimap
+duration multimap_test_find(size_t items_count);
+
+// тест std::unordered_map
+duration unordered_map_test_find(size_t items_count);
+
+// талица с тестовыми функциями
+func_map test_find_map{
+	{ "ht test + std::hash", ht_test_find },
+	{ "ht test + custrom hash", ht_test_find_ch },
+	{ "map test", map_test_find},
+	{ "multimap test", multimap_test_find },
+	{ "unordered_map test", unordered_map_test_find },
+};
 
 int main() {
-
-	/*std::vector<std::vector<result_struct>> res_str_vect;
+	/*
 	for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
-		insert_test_int_int(it->first, it->second);
+		find_test_int_int(it->first, it->second);
 	}
-*/
+	*/
 	struct int_hash {
 		size_t operator()(int i) { return abs(i); }; // простая хеш функция
 	};
@@ -83,12 +104,14 @@ int main() {
 	for (size_t i = 0; i < 1000000; ++i) {
 		ht.insert(i, i);
 	}
+	const int e = -5;
 	ht.insert(-5, 10);
-	auto start_ht = std::chrono::steady_clock::now();
-	auto find_res = ht.find(-5);
-	auto stop_ht = std::chrono::steady_clock::now();
-	auto duration_ht = stop_ht - start_ht;
-	std::cout << duration_ht.count() << std::endl;
+	ht[-5] = 11;
+	//auto start_ht = std::chrono::steady_clock::now();
+	shti::hash_table<int, int, int_hash>::iterator find_res = ht.find(e);
+	//auto stop_ht = std::chrono::steady_clock::now();
+	//auto duration_ht = stop_ht - start_ht;
+	//std::cout << duration_ht.count() << std::endl;
 	return 0;
 }
 
@@ -181,6 +204,105 @@ duration unordered_map_test_insert(size_t items_count){
 	for (size_t i = 0; i < items_count; ++i) {
 		um.insert({ i, i });
 	}
+	auto stop_umap = std::chrono::steady_clock::now();
+	auto duration_umap = stop_umap - start_umap;
+	return duration_umap;
+}
+
+void find_test_int_int(size_t items_count, size_t n){
+	std::cout << "find test. items count = " << items_count << " iters = " << n << std::endl;
+	for (func_map::iterator it = test_insert_map.begin(); it != test_insert_map.end(); it++) {
+		std::cout << '\t' << it->first << std::endl;
+		time_duration_vect res_vect;
+		for (size_t i = 0; i < n; ++i) {
+			duration res = it->second(items_count);
+			res_vect.push_back(std::chrono::duration_cast<TIME_CAST_TYPE>(res).count());
+		}
+		std::cout << "\t\tall_data  = [ " << res_vect[0];
+		for (size_t i = 1; i < res_vect.size(); ++i) {
+			std::cout << ", " << res_vect[i];
+		}
+		std::cout << " ]" << std::endl;
+		std::sort(res_vect.begin(), res_vect.end());
+		DURATION_TYPE min = *std::min_element(res_vect.begin(), res_vect.end());
+		DURATION_TYPE max = *std::max_element(res_vect.begin(), res_vect.end());
+		DURATION_TYPE midle = 0;
+		for (size_t i = 0; i < res_vect.size(); ++i) {
+			midle += res_vect[i];
+		}
+		midle /= res_vect.size();
+		DURATION_TYPE median = 0;
+		if (res_vect.size() % 2 == 0) {
+			median = res_vect[res_vect.size() / 2];
+		}
+		else {
+			median = 0.5 * (res_vect[res_vect.size() / 2 - 1] + res_vect[res_vect.size() / 2]);
+		}
+		std::cout << "\t\tmin, t = " << min << std::endl;
+		std::cout << "\t\tmax, t = " << max << std::endl;
+		std::cout << "\t\tmedium, t = " << midle << std::endl;
+		std::cout << "\t\tmedian, t = " << median << std::endl;
+	}
+}
+
+duration ht_test_find(size_t items_count){
+	shti::hash_table<int, int> ht;
+	for (size_t i = 0; i < items_count; ++i) {
+		ht.insert(i, i);
+	}
+	auto start_ht = std::chrono::steady_clock::now();
+	auto find_res = ht.find(items_count / 2);
+	auto stop_ht = std::chrono::steady_clock::now();
+	auto duration_ht = stop_ht - start_ht;
+	return duration_ht;
+}
+
+duration ht_test_find_ch(size_t items_count){
+	struct int_hash {
+		size_t operator()(int i) { return abs(i); }; // простая хеш функция
+	};
+	shti::hash_table<int, int, int_hash> ht;
+	for (size_t i = 0; i < items_count; ++i) {
+		ht.insert(i, i);
+	}
+	auto start_ht = std::chrono::steady_clock::now();
+	auto find_res = ht.find(items_count / 2);
+	auto stop_ht = std::chrono::steady_clock::now();
+	auto duration_ht = stop_ht - start_ht;
+	return duration_ht;
+}
+
+duration map_test_find(size_t items_count){
+	std::map<int, int> m;
+	for (size_t i = 0; i < items_count; ++i) {
+		m.insert({ i, i });
+	}
+	auto start_map = std::chrono::steady_clock::now();
+	auto find_res = m.find(items_count / 2);
+	auto stop_map = std::chrono::steady_clock::now();
+	auto duration_map = stop_map - start_map;
+	return duration_map;
+}
+
+duration multimap_test_find(size_t items_count){
+	std::multimap<int, int> mm;
+	for (size_t i = 0; i < items_count; ++i) {
+		mm.insert({ i, i });
+	}
+	auto start_mmap = std::chrono::steady_clock::now();
+	auto find_res = mm.find(items_count / 2);
+	auto stop_mmap = std::chrono::steady_clock::now();
+	auto duration_mmap = stop_mmap - start_mmap;
+	return duration_mmap;
+}
+
+duration unordered_map_test_find(size_t items_count){
+	std::unordered_map<int, int> um;
+	for (size_t i = 0; i < items_count; ++i) {
+		um.insert({ i, i });
+	}
+	auto start_umap = std::chrono::steady_clock::now();
+	auto find_res = um.find(items_count / 2);
 	auto stop_umap = std::chrono::steady_clock::now();
 	auto duration_umap = stop_umap - start_umap;
 	return duration_umap;

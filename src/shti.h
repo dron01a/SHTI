@@ -15,6 +15,10 @@
 
 namespace shti {
 
+	enum error_type {
+		out_of_range,
+	};
+
 	template<typename key_type, typename value_type, typename hash_f = std::hash<key_type>>
 	class hash_table {
 
@@ -169,14 +173,38 @@ namespace shti {
 		}
 
 		// выполняет поиск элемента в таблице по ключу
-		
-		template <typename _key>
-		iterator find(const _key &key) {
+		iterator find(const key_type &key) {
 			return find_implementation(key); 
 		}
-		template <typename _key>
-		const_iterator find(const _key &key) const {
+		const_iterator find(const key_type &key) const {
 			return find_implementation(key);
+		}
+
+		// оператор выдачи по индексу
+		value_type & operator[](const key_type &key) {
+			return find_implementation(key)->value();
+		}
+
+		// выдает элемент, но с проверкой
+		value_type & at(const key_type & key) {
+			return at_implementation(key);
+		}
+		const value_type & at(const key_type & key) const {
+			return at_implementation(key);
+		}
+
+		// возвращает колличество элементов
+		size_type size() const noexcept { return _size; }
+
+		// возвращает зарезервиврованное колличество элементов
+		size_type capacity() const noexcept { return _capacity; }
+
+		// очищает контенер
+		void clear() {
+			for (size_type i = 0; i < _capacity; ++i) {
+				delete data[i];
+			}
+			delete[] data;
 		}
 
 	private:
@@ -213,7 +241,7 @@ namespace shti {
 			delete[] temp_data;
 		}
 
-		// шаблон ставки элементов в таблицу
+		// реализация ставки элементов в таблицу
 		template <typename _key, typename ... elements>
 		iterator emplace_implementation(const _key & key, elements &&... elem) {
 			if (_size + 1 > int(rehash_coef * _capacity)) {
@@ -234,7 +262,7 @@ namespace shti {
 			return iterator(this, cur_node->next()); // возвращаем итератор на вставленный элемент
 		}
 
-		// шаблон поиска элемента
+		// реализация поиска элемента
 		template <typename _key>
 		iterator find_implementation(const _key & key) {
 			size_type index = key_to_index(key); // получаем индекс элемента
@@ -251,8 +279,22 @@ namespace shti {
 			return end();
 		}
 		template <typename _key> 
-		const_iterator  find_implementation(const _key & key) { 
-			const_cast<hash_table *>(this)->find_implementation(key);
+		const_iterator find_implementation(const _key & key) const { 
+			return const_cast<hash_table *>(this)->find_implementation(key);
+		}
+
+		// реализация выдачи по индексу
+		template <typename _key>
+		value_type & at_implementation(const _key & key) {
+			iterator res = find_implementation(key);
+			if (res == end()) {
+				throw shti::error_type::out_of_range;
+			}
+			return res->value();
+		}
+		template <typename _key>
+		const value_type & at_implementation(const _key & key) const {
+			return const_cast<hash_table *>(this)->at_implementation(key);
 		}
 
 		// переход от ключа к индексу
