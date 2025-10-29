@@ -38,9 +38,6 @@ namespace shti {
 				delete _next;
 			}
 
-			//// возвращает указтель на следующий элемент
-			//node<key_type, value_type> * next() { return _next; };
-
 			// возвращает ключ
 			key_type key() { return _key; };
 
