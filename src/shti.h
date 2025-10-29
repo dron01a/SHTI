@@ -35,12 +35,11 @@ namespace shti {
 
 			// деструктор класса
 			~node() {
-				//_next = nullptr;
 				delete _next;
 			}
 
-			// возвращает указтель на следующий элемент
-			node<key_type, value_type> * next() { return _next; };
+			//// возвращает указтель на следующий элемент
+			//node<key_type, value_type> * next() { return _next; };
 
 			// возвращает ключ
 			key_type key() { return _key; };
@@ -103,8 +102,8 @@ namespace shti {
 
 			// инкремент
 			_iterator & operator++() {
-				if (cur_node->next() != nullptr) {
-					cur_node = cur_node->next();
+				if (cur_node->_next != nullptr) {
+					cur_node = cur_node->_next;
 				}
 				else {
 					do {
@@ -231,7 +230,7 @@ namespace shti {
 				node<key_type, value_type> * cur_node = std::move(temp_data[i]);
 				while (cur_node != nullptr) {
 					emplace_implementation(cur_node->key(), cur_node->value());
-					cur_node = std::move(cur_node->next());
+					cur_node = std::move(cur_node->_next);
 				}
 			}
 			for (size_type i = 0; i < last_capacity / 2; ++i) { // очищаем выделенную пам€ть
@@ -254,12 +253,12 @@ namespace shti {
 				_size++;
 				return iterator(this, index); // возвращаем итератор на вставленный элемент
 			}
-			while (cur_node->next() != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
-				cur_node = cur_node->next();
+			while (cur_node->_next != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
+				cur_node = cur_node->_next;
 			}
 			cur_node->_next = new node<key_type, value_type>(key, value_type(std::forward<elements>(elem)...));
 			_size++;
-			return iterator(this, cur_node->next()); // возвращаем итератор на вставленный элемент
+			return iterator(this, cur_node->_next); // возвращаем итератор на вставленный элемент
 		}
 
 		// реализаци€ поиска элемента
@@ -274,7 +273,7 @@ namespace shti {
 				if (cur_node->key() == key) {
 					return iterator(this, cur_node);
 				}
-				cur_node = cur_node->next();
+				cur_node = cur_node->_next;
 			}
 			return end();
 		}
