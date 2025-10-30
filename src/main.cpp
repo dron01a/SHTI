@@ -21,14 +21,17 @@ typedef std::vector<DURATION_TYPE> time_duration_vect;
 typedef std::map <std::string, std::function<duration(size_t)>> func_map;
 
 std::vector<std::pair<int, int>> tested_data_count{
-	std::make_pair(1000, 10),
-	std::make_pair(5000, 10),
-	std::make_pair(10000, 10),
-	std::make_pair(50000, 10),
-	std::make_pair(100000, 10),
-	std::make_pair(500000, 10),
-	std::make_pair(1000000, 10),
-	std::make_pair(5000000, 10),
+	std::make_pair(1000, 100),
+	std::make_pair(5000, 100),
+	std::make_pair(10000, 100),
+	std::make_pair(25000, 100),
+	std::make_pair(50000, 100),
+	std::make_pair(100000, 100),
+	std::make_pair(250000, 100),
+	std::make_pair(500000, 100),
+	std::make_pair(1000000, 100),
+	std::make_pair(2500000, 100),
+	std::make_pair(5000000, 100),
 };
 
 /*
@@ -62,8 +65,12 @@ func_map test_find_map{
 };
 
 int main() {
-	for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
-		find_test_int_int(it->first, it->second);
+	shti::hash_table<int, int> ht;
+	ht.insert({ {1,2} , {2,1} });
+	shti::hash_table<int, int> gh;
+	gh.insert(ht.begin(), ht.end());
+	for (auto it = gh.begin(); it != gh.end(); ++it ) {
+		std::cout << it->key() << " " << it->value() << std::endl;
 	}
 	return 0;
 }

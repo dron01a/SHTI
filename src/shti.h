@@ -61,11 +61,11 @@ namespace shti {
 			size_type _index = 0; // текущий индекс
 			node<key_type, value_type> * cur_node = nullptr; // указатель на текущий узел
 
-															 // конструктор класса
+			// конструктор класса
 			explicit _iterator(table_type * owner) : _owner(owner) {
-				do {
+				while (_owner->data[_index] == nullptr) { // пока не встретим инициализированую ячейку
 					_index++;
-				} while (_owner->data[_index] == nullptr); // пока не встретим инициализированую ячейку
+				}; 
 				cur_node = _owner->data[_index];
 			}
 			explicit _iterator(table_type * owner, size_type index) : _owner(owner), _index(index) {
@@ -151,21 +151,39 @@ namespace shti {
 
 		// итераторы указывающие на конец
 		iterator end() noexcept {
-			return iterator(this, _capacity -1);
+			return iterator(this, _capacity);
 		}
 		const_iterator end() const noexcept {
-			return const_iterator(this, _capacity - 1);
+			return const_iterator(this, _capacity);
 		}
 		const_iterator cend() const noexcept {
-			return const_iterator(this, _capacity - 1);
+			return const_iterator(this, _capacity);
 		}
 
 		// выполняет вставку элемента в таблицу
-		iterator insert(const node<key_type, value_type> & _node) {
-			return emplace_implementation(_node.key(), _node.value());
-		}
-		iterator insert(key_type key, value_type value) {
+		iterator insert(key_type key, const value_type & value) {
 			return emplace_implementation(key, value);
+		}
+		iterator insert(key_type key, value_type && value) {
+			return emplace_implementation(key, std::move(value));
+		}
+		iterator insert(iterator begin, iterator end) {
+			for (; begin != end; ++begin) {
+				insert(begin->key(), begin->value()); // добавляем элементы из списка
+			}
+			return begin;
+		}
+		iterator insert(std::pair<key_type, value_type> data) {
+			return emplace_implementation(data.first, data.second);
+		}
+		iterator insert(std::initializer_list<std::pair<key_type, value_type>> data_list) {
+			for (auto it = data_list.begin(); it != data_list.end(); it++) {
+				insert(*it); // добавляем элементы из списка
+			} 
+			return find(data_list.end()->first);
+		}
+		template <typename... elem> iterator emplace(elem &&... _elem) {
+			return emplace_implementation(std::forward<elem>(_elem)...);
 		}
 
 		// выполняет поиск элемента в таблице по ключу
