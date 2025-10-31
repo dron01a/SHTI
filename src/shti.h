@@ -35,7 +35,7 @@ namespace shti {
 
 			// деструктор класса
 			~node() {
-				delete _next;
+				_next = nullptr;
 			}
 
 			// возвращает ключ
@@ -43,6 +43,14 @@ namespace shti {
 
 			// возвращает значение
 			value_type & value() { return _value; }
+
+			//// оператор присваивани€ 
+			//node<key_type, value_type> & operator=(node<key_type, value_type> other) {
+			//	_key = other._key;
+			//	_value = other._value;
+			//	_next = other._next;
+			//	return *this;
+			//}
 
 		private:
 			key_type _key; // ключ 
@@ -69,9 +77,16 @@ namespace shti {
 				cur_node = _owner->data[_index];
 			}
 			explicit _iterator(table_type * owner, size_type index) : _owner(owner), _index(index) {
+				while (_owner->data[_index] == nullptr) { // пока не встретим инициализированую €чейку
+					_index++;
+				};
 				cur_node = _owner->data[index];
 			}
 			explicit _iterator(table_type * owner, node<key_type, value_type> * _node) : _owner(owner) {
+				cur_node = _node;
+			}
+			explicit _iterator(table_type * owner, node<key_type, value_type> * _node, size_type pos) 
+				: _owner(owner), _index(pos) {
 				cur_node = _node;
 			}
 			template <typename _key_type, typename _value_type, typename table_type>
@@ -103,9 +118,10 @@ namespace shti {
 					cur_node = cur_node->_next;
 				}
 				else {
-					do {
-						_index++;
-					} while (_owner->data[_index] == nullptr); // пока не встретим инициализированую €чейку
+					_index++;
+					while (_owner->data[_index] == nullptr && _index < _owner->_capacity) { 
+						_index++; // пока не встретим инициализированую €чейку
+					}; 
 					cur_node = _owner->data[_index];
 				}
 				return *this;
@@ -129,11 +145,16 @@ namespace shti {
 				data[i] = nullptr;
 			}
 		}
+		hash_table(iterator begin, iterator end) {
+			insert(begin, end);
+		}
 		hash_table(hash_table & _other) : hash_table(_other._capacity) {
-			// ????
+			insert(_other.begin(), _other.end());
 		}
 		hash_table(hash_table && _other) {
-			// ????
+			std::swap(_size, _other._size);
+			std::swap(_capacity, _other._capacity);
+			std::swap(data, _other.data);
 		}
 
 		// деструктор класса
@@ -206,6 +227,31 @@ namespace shti {
 		const value_type & at(const key_type & key) const {
 			return at_implementation(key);
 		}
+
+		// методы дл€ удалени€ элементов
+		size_type erase(const key_type & key) {
+			size_type result = 0;
+			auto it = find_implementation(key);
+			while (it != end()) {
+				if (it->key() == key) {
+					it = erase_implementation(it);
+					result++;
+					continue;
+				}
+				++it;
+			}
+			return result;
+		}
+		iterator erase(iterator itr) {
+			return erase_implementation(itr);
+		}
+		iterator erase(iterator begin, iterator end) {	
+			while (begin != end) {
+				begin = erase_implementation(begin);
+			}
+			return erase_implementation(begin);
+		}
+
 
 		// возвращает колличество элементов
 		size_type size() const noexcept { return _size; }
@@ -286,7 +332,7 @@ namespace shti {
 			node<key_type, value_type> * cur_node = data[index];
 			while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
 				if (cur_node->key() == key) {
-					return iterator(this, cur_node);
+					return iterator(this, cur_node, index);
 				}
 				cur_node = cur_node->_next;
 			}
@@ -308,7 +354,21 @@ namespace shti {
 		}
 		template <typename _key>
 		const value_type & at_implementation(const _key & key) const {
-			return const_cast<hash_table *>(this)->at_implementation(key);
+			return const_cast<hash_table*>(this)->at_implementation(key);
+		}
+
+		// реализаци€ удалени€ элементов
+		iterator erase_implementation(iterator itr) {
+			_size--;
+			if (itr.cur_node->_next != nullptr) {
+				node<key_type, value_type> * temp = itr.cur_node;
+				itr.cur_node = itr.cur_node->_next;
+				delete temp;
+				return itr;
+			}
+			delete itr.cur_node;
+			data[itr._index] = nullptr;
+			return iterator(this, itr._index+1);
 		}
 
 		// переход от ключа к индексу
