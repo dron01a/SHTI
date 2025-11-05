@@ -35,7 +35,8 @@ namespace shti {
 
 			// деструктор класса
 			~node() {
-				_next = nullptr;
+				//_next = nullptr;
+				delete _next;
 			}
 
 			// возвращает ключ
@@ -349,13 +350,14 @@ namespace shti {
 		// реализация ставки элементов в таблицу
 		template <typename _key, typename ... elements>
 		iterator emplace_implementation(const _key & key, elements &&... elem) {
+			if (_size + 1 > int(rehash_coef * _capacity)) {
+				rehash(_capacity * size_multiplier);
+			}
 			size_type index = key_to_index(key); // получаем индекс
 			node<key_type, value_type> * cur_node = data[index];
 			if (cur_node == nullptr) { // если ячейка пустая
 				data[index] = new node<key_type, value_type>(key, value_type(std::forward<elements>(elem)...));
-				if (_size + 1 > int(rehash_coef * _capacity)) {
-					rehash(_capacity * size_multiplier);
-				}
+				
 				_size++;
 				return iterator(this, index); // возвращаем итератор на вставленный элемент
 			}

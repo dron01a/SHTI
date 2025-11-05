@@ -11,7 +11,7 @@
 
 #include "shti.h"
 
-#define TIME_CAST_TYPE std::chrono::nanoseconds
+#define TIME_CAST_TYPE std::chrono::milliseconds
 #define DURATION_TYPE long long
 #define DURATION_PREF std::nano
 
@@ -19,6 +19,40 @@ typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 typedef std::chrono::duration<DURATION_TYPE, DURATION_PREF> duration;
 typedef std::vector<DURATION_TYPE> time_duration_vect;
 typedef std::map <std::string, std::function<duration(size_t)>> func_map;
+
+struct result_struct {
+	DURATION_TYPE min;
+	DURATION_TYPE max;
+	DURATION_TYPE midle;
+	DURATION_TYPE median;
+};
+
+// тест скорости работы метода insert
+void insert_test_int_int(size_t items_count, size_t n);
+
+// тест хеш таблицы
+duration ht_test_insert(size_t items_count);
+
+// тест хеш таблицы с пользовательской функцией
+duration ht_test_insert_ch(size_t items_count);
+
+// тест std::map
+duration map_test_insert(size_t items_count);
+
+// тест std::multimap
+duration multimap_test_insert(size_t items_count);
+
+// тест std::unordered_map
+duration unordered_map_test_insert(size_t items_count);
+
+// талица с тестовыми функциями
+func_map test_insert_map{
+	{ "ht test + std::hash", ht_test_insert },
+	{ "ht test + custrom hash", ht_test_insert_ch },
+	{ "map test", map_test_insert },
+	{ "multimap test", multimap_test_insert },
+	{ "unordered_map test", unordered_map_test_insert },
+};
 
 std::vector<std::pair<int, int>> tested_data_count{
 	std::make_pair(1000, 10),
@@ -35,65 +69,24 @@ std::vector<std::pair<int, int>> tested_data_count{
 };
 
 /*
-	тест скорости работы метода find
-	данный тест проводится с коллизиями
+
+Тест производительности метода insert проводится при использовании шаблона <int, int>
+
 */
-void erase_test_int_int(size_t items_count, size_t n);
-
-// тест хеш таблицы
-duration ht_test_erase(size_t items_count);
-
-// тест хеш таблицы с пользовательской функцией
-duration ht_test_erase_ch(size_t items_count);
-
-// тест std::map
-duration map_test_erase(size_t items_count);
-
-// тест std::multimap
-duration multimap_test_erase(size_t items_count);
-
-// тест std::unordered_map
-duration unordered_map_test_erase(size_t items_count);
-
-// талица с тестовыми функциями
-func_map test_erase_map{
-	{ "ht test + std::hash", ht_test_erase },
-	{ "ht test + custrom hash", ht_test_erase_ch },
-	{ "map test", map_test_erase },
-	{ "multimap test", multimap_test_erase },
-	{ "unordered_map test", unordered_map_test_erase },
-};
 
 int main() {
-	struct int_hash {
-		size_t operator()(int i) { return abs(i); }; // простая хеш функция
-	};
-	shti::hash_table<int, int, int_hash> ht;
-	ht.insert({ {4 , 4}, {1,2} , {2,1} , { -1, 2 }, {1, 22}, { 3, 2 } });
 
-	for (auto it = ht.begin(); it != ht.end(); it++) {
-		std::cout << it->key() << " " << it->value() << std::endl;
+	std::vector<std::vector<result_struct>> res_str_vect;
+	for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
+		insert_test_int_int(it->first, it->second);
 	}
-	size_t res_c = ht.count(1);
 
-	//shti::hash_table<int, int, int_hash> gh(std::move(ht));
-	//shti::hash_table<int, int, int_hash>::iterator it1 = gh.find(1);
-	//shti::hash_table<int, int, int_hash>::iterator it2 = gh.find(2);
-	//auto res = gh.end();
-	////gh.insert(ht.begin(), ht.end());
-	//for (auto it = gh.begin(); it != gh.end(); ++it ) {
-	//	std::cout << it->key() << " " << it->value() << std::endl;
-	//}
-	/*for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
-		erase_test_int_int(it->first, it->second);
-	}*/
-	//ht_test_erase(250000);
 	return 0;
 }
 
-void erase_test_int_int(size_t items_count, size_t n){
-	std::cout << "find test. items count = " << items_count << " iters = " << n << std::endl;
-	for (func_map::iterator it = test_erase_map.begin(); it != test_erase_map.end(); it++) {
+void insert_test_int_int(size_t items_count, size_t n) {
+	std::cout << "insert test. items count = " << items_count << " iters = " << n << std::endl;
+	for (func_map::iterator it = test_insert_map.begin(); it != test_insert_map.end(); it++) {
 		std::cout << '\t' << it->first << std::endl;
 		time_duration_vect res_vect;
 		for (size_t i = 0; i < n; ++i) {
@@ -127,64 +120,59 @@ void erase_test_int_int(size_t items_count, size_t n){
 	}
 }
 
-duration ht_test_erase(size_t items_count){
+duration ht_test_insert(size_t items_count) {
+	auto start_ht = std::chrono::steady_clock::now();
 	shti::hash_table<int, int> ht;
 	for (size_t i = 0; i < items_count; ++i) {
 		ht.insert(i, i);
 	}
-	auto start_ht = std::chrono::steady_clock::now();
-	auto find_res = ht.erase(items_count / 2);
 	auto stop_ht = std::chrono::steady_clock::now();
 	auto duration_ht = stop_ht - start_ht;
 	return duration_ht;
 }
 
-duration ht_test_erase_ch(size_t items_count){
+duration ht_test_insert_ch(size_t items_count) {
 	struct int_hash {
 		size_t operator()(int i) { return abs(i); }; // простая хеш функция
 	};
+	auto start_ht = std::chrono::steady_clock::now();
 	shti::hash_table<int, int, int_hash> ht;
 	for (size_t i = 0; i < items_count; ++i) {
 		ht.insert(i, i);
 	}
-	auto start_ht = std::chrono::steady_clock::now();
-	auto find_res = ht.erase(items_count / 2);
 	auto stop_ht = std::chrono::steady_clock::now();
 	auto duration_ht = stop_ht - start_ht;
 	return duration_ht;
 }
 
-duration map_test_erase(size_t items_count){
+duration map_test_insert(size_t items_count) {
+	auto start_map = std::chrono::steady_clock::now();
 	std::map<int, int> m;
 	for (size_t i = 0; i < items_count; ++i) {
 		m.insert({ i, i });
 	}
-	auto start_map = std::chrono::steady_clock::now();
-	auto find_res = m.erase(items_count / 2);
 	auto stop_map = std::chrono::steady_clock::now();
 	auto duration_map = stop_map - start_map;
 	return duration_map;
 }
 
-duration multimap_test_erase(size_t items_count){
+duration multimap_test_insert(size_t items_count) {
+	auto start_mmap = std::chrono::steady_clock::now();
 	std::multimap<int, int> mm;
 	for (size_t i = 0; i < items_count; ++i) {
 		mm.insert({ i, i });
 	}
-	auto start_mmap = std::chrono::steady_clock::now();
-	auto find_res = mm.erase(items_count / 2);
 	auto stop_mmap = std::chrono::steady_clock::now();
 	auto duration_mmap = stop_mmap - start_mmap;
 	return duration_mmap;
 }
 
-duration unordered_map_test_erase(size_t items_count){
+duration unordered_map_test_insert(size_t items_count) {
+	auto start_umap = std::chrono::steady_clock::now();
 	std::unordered_map<int, int> um;
 	for (size_t i = 0; i < items_count; ++i) {
 		um.insert({ i, i });
 	}
-	auto start_umap = std::chrono::steady_clock::now();
-	auto find_res = um.erase(items_count / 2);
 	auto stop_umap = std::chrono::steady_clock::now();
 	auto duration_umap = stop_umap - start_umap;
 	return duration_umap;

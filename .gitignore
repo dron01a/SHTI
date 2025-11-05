@@ -24,7 +24,9 @@
 siht
 
 src//main.cpp
+src/main.cpp
 src\\main.cpp
+src\main.cpp
 
 ### Windows ###
 # Windows thumbnail cache files

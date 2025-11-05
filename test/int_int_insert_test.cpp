@@ -58,10 +58,13 @@ std::vector<std::pair<int, int>> tested_data_count{
 	std::make_pair(1000, 10),
 	std::make_pair(5000, 10),
 	std::make_pair(10000, 10),
+	std::make_pair(25000, 10),
 	std::make_pair(50000, 10),
 	std::make_pair(100000, 10),
+	std::make_pair(250000, 10),
 	std::make_pair(500000, 10),
 	std::make_pair(1000000, 10),
+	std::make_pair(2500000, 10),
 	std::make_pair(5000000, 10),
 };
 
