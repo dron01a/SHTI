@@ -74,6 +74,7 @@ int main() {
 	for (auto it = ht.begin(); it != ht.end(); it++) {
 		std::cout << it->key() << " " << it->value() << std::endl;
 	}
+	size_t res_c = ht.count(1);
 
 	//shti::hash_table<int, int, int_hash> gh(std::move(ht));
 	//shti::hash_table<int, int, int_hash>::iterator it1 = gh.find(1);

@@ -19,11 +19,11 @@ namespace shti {
 		out_of_range,
 	};
 
-	template<typename key_type, typename value_type, typename hash_f = std::hash<key_type>>
+	template<typename key_type,
+		     typename value_type, 
+		     typename hash_f = std::hash<key_type>,
+		     typename size_type = std::size_t>
 	class hash_table {
-
-		using size_type = std::size_t;
-
 	private:
 		// класс узла хеш таблицы
 		template<typename key_type, typename value_type> class node {
@@ -163,6 +163,25 @@ namespace shti {
 			delete[] data;
 		}
 
+		// операторы присвоени€ 
+		hash_table & operator=(const hash_table & table) {
+			if (this != table) {
+				hash_table temp(table);
+				swap(temp);
+			}
+			return *this;
+		}
+		hash_table & operator=(const hash_table && _other) {
+			if (this != _other) {
+				clear();
+				std::swap(_size, _other._size);
+				std::swap(_capacity, _other._capacity);
+				std::swap(data, _other.data);
+				hasher = std::move(_other.hasher);
+			}
+			return *this;
+		}
+
 		// итераторы указывающие на начало
 		iterator begin() noexcept { return iterator(this); }
 		const_iterator begin() const noexcept { return const_iterator(this); }
@@ -250,6 +269,12 @@ namespace shti {
 			return erase_implementation(begin);
 		}
 
+		// мен€ет местами с другой таблицей
+		void swap(hash_table & ht) {
+			std::swap(data, ht);
+			std::swap(_capacity, ht._capacity);
+			std::swap(_size, ht._size);
+		}
 
 		// возвращает колличество элементов
 		size_type size() const noexcept { return _size; }
@@ -263,17 +288,41 @@ namespace shti {
 				delete data[i];
 			}
 			delete[] data;
+			_size = 0;
+			_capacity = 0;
 		}
-
-	private:
+		
+		// возвращает колличесво элементов с указанным ключем
+		size_type count(const key_type &key) {
+			size_type result = 0;
+			size_type index = key_to_index(key); // получаем индекс элемента
+			if (data[index] == nullptr) {
+				return 0;
+			}
+			node<key_type, value_type> * cur_node = data[index];
+			while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
+				if (cur_node->key() == key) {
+					result++;
+				}
+				cur_node = cur_node->_next;
+			}
+			return result;
+		}
 
 		// измен€ет размер 
 		void resize(size_type new_size) {
 			if (new_size > _capacity) {
 				rehash(new_size);
 			}
+			return;
 		}
 
+		// возвращает хеш функцию
+		hash_f get_hash_func() const {
+			return hasher;
+		}
+
+	private:
 		// перераспределение элементов в таблице
 		void rehash(size_type new_size) {
 			size_type last_capacity = _capacity; 
@@ -300,13 +349,13 @@ namespace shti {
 		// реализаци€ ставки элементов в таблицу
 		template <typename _key, typename ... elements>
 		iterator emplace_implementation(const _key & key, elements &&... elem) {
-			if (_size + 1 > int(rehash_coef * _capacity)) {
-				rehash(_capacity * size_multiplier);
-			}
 			size_type index = key_to_index(key); // получаем индекс
 			node<key_type, value_type> * cur_node = data[index];
 			if (cur_node == nullptr) { // если €чейка пуста€
 				data[index] = new node<key_type, value_type>(key, value_type(std::forward<elements>(elem)...));
+				if (_size + 1 > int(rehash_coef * _capacity)) {
+					rehash(_capacity * size_multiplier);
+				}
 				_size++;
 				return iterator(this, index); // возвращаем итератор на вставленный элемент
 			}
@@ -387,7 +436,7 @@ namespace shti {
 		// переход от ключа к индексу
 		template <typename key_type>
 		size_type key_to_index(const key_type & key) {
-			return hash_f()(key) % _capacity;
+			return hasher(key) % _capacity;
 		}
 
 		size_type _capacity = CAPACITY; // размер таблицы
@@ -395,6 +444,7 @@ namespace shti {
 		float rehash_coef = REHASH_COEF; // коэфициент при котором размер таблицы будет мен€тьс€
 		float size_multiplier = SIZE_INC_MULTIPLIER; // коэффициент увеличени€ размера таблицы
 		node<key_type, value_type> ** data; // данные
+		hash_f hasher;
 	};
 
 };
