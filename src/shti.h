@@ -35,7 +35,6 @@ namespace shti {
 
 			// деструктор класса
 			~node() {
-				//_next = nullptr;
 				delete _next;
 			}
 
@@ -415,10 +414,10 @@ namespace shti {
 					cur = cur->_next;
 				}
 				if (perv == nullptr) {
-					cur->_next = data[itr._index]->_next;
+					cur = data[itr._index]->_next;
 					data[itr._index]->_next = nullptr;
 					delete data[itr._index];
-					data[itr._index] = cur->_next;
+					data[itr._index] = cur;
 					return iterator(this, itr._index);
 				}
 				perv->_next = cur->_next;
