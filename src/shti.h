@@ -64,28 +64,25 @@ namespace shti {
 		template<typename key_type, typename value_type, typename table_type>
 		class _iterator {
 			friend table_type;
+		protected: 
+			// выполняет поиск следующей инициализированной ячейки
+			void find_next_init_node() {
+				while (_owner->data[_index] == nullptr && _index < _owner->_capacity - 1) {
+					_index++; // пока не встретим инициализированую ячейку
+				};
+				cur_node = _owner->data[_index];
+			}
+
 		private:
 			table_type * _owner = nullptr; // таблица которой принадлежит итератор
 			size_type _index = 0; // текущий индекс
 			node<key_type, value_type> * cur_node = nullptr; // указатель на текущий узел
 
 			// конструктор класса
-			//explicit _iterator(table_type * owner) : _owner(owner) {
-			//	while (_owner->data[_index] == nullptr && _index < _owner->_capacity) { 
-			//		_index++; // пока не встретим инициализированую ячейку
-			//	}; 
-			//	cur_node = _owner->data[_index];
-			//}
 			explicit _iterator(table_type * owner, size_type index = 0) : _owner(owner), _index(index) {
-				while (_owner->data[_index] == nullptr && _index < _owner->_capacity - 1) {
-					_index++; // пока не встретим инициализированую ячейку
-				};
-				cur_node = _owner->data[_index];
+				find_next_init_node();
 			}
-			explicit _iterator(table_type * owner, node<key_type, value_type> * _node) : _owner(owner) {
-				cur_node = _node;
-			}
-			explicit _iterator(table_type * owner, node<key_type, value_type> * _node, size_type pos) 
+			explicit _iterator(table_type * owner, node<key_type, value_type> * _node, size_type pos = 0) 
 				: _owner(owner), _index(pos) {
 				cur_node = _node;
 			}
@@ -94,11 +91,11 @@ namespace shti {
 				: _owner(other._owner), _index(other._index) {
 				cur_node = other.cur_node;
 			}
-		public:
 
+		public:
 			// оператры сравнения
 			bool operator==(const _iterator & it) const {
-				return _owner == it._owner && _index == it._index;
+				return _owner == it._owner && _index == it._index && it.cur_node == cur_node;
 			}
 			bool operator!=(const _iterator & it) const {
 				return !(*this == it);
@@ -119,11 +116,12 @@ namespace shti {
 				}
 				else {
 					_index++;
-					while (_owner->data[_index] == nullptr && _index < _owner->_capacity) { 
-						_index++; // пока не встретим инициализированую ячейку
-					}; 
-					cur_node = _owner->data[_index];
+					find_next_init_node();
 				}
+				return *this;
+			}
+			_iterator & operator++(int) {
+				++(*this);
 				return *this;
 			}
 		};

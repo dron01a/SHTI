@@ -65,11 +65,16 @@ func_map test_erase_map{
 };
 
 int main() {
-	//struct int_hash {
-	//	size_t operator()(int i) { return abs(i); }; // простая хеш функция
-	//};
-	//shti::hash_table<int, int, int_hash> ht;
-	//ht.insert({ {4 , 4}, {1,2} , {2,1} , { -1, 2 }, {1, 22}, { 3, 2 } });
+	struct int_hash {
+		size_t operator()(int i) { return abs(i); }; // простая хеш функция
+	};
+	shti::hash_table<int, int, int_hash> ht;
+	ht.insert({ {4 , 4}, {1,2} , {2,1} , { -1, 2 }, {1, 22}, { 3, 2 } });
+
+	for (auto it = ht.begin(); it != ht.end(); it++) {
+		std::cout << it->key() << " " << it->value() << std::endl;
+	}
+
 	//shti::hash_table<int, int, int_hash> gh(std::move(ht));
 	//shti::hash_table<int, int, int_hash>::iterator it1 = gh.find(1);
 	//shti::hash_table<int, int, int_hash>::iterator it2 = gh.find(2);
@@ -78,9 +83,9 @@ int main() {
 	//for (auto it = gh.begin(); it != gh.end(); ++it ) {
 	//	std::cout << it->key() << " " << it->value() << std::endl;
 	//}
-	for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
+	/*for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
 		erase_test_int_int(it->first, it->second);
-	}
+	}*/
 	//ht_test_erase(250000);
 	return 0;
 }
