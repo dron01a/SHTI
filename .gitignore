@@ -23,7 +23,7 @@
 *.code-workspace
 siht
 
-src/main.cpp
+src//main.cpp
 src\\main.cpp
 
 ### Windows ###

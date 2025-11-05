@@ -30,7 +30,7 @@ namespace shti {
 			friend class hash_table;
 		public:
 			// конструктор класса
-			node(key_type key, value_type value): _key(key), _value(value) {}
+			node(key_type key, value_type value): _key(key), _value(value) , _next(nullptr){}
 			node() {}
 
 			// деструктор класса
@@ -44,13 +44,13 @@ namespace shti {
 			// возвращает значение
 			value_type & value() { return _value; }
 
-			//// оператор присваивания 
-			//node<key_type, value_type> & operator=(node<key_type, value_type> other) {
-			//	_key = other._key;
-			//	_value = other._value;
-			//	_next = other._next;
-			//	return *this;
-			//}
+			// оператор присваивания 
+			node<key_type, value_type> & operator=(node<key_type, value_type> other) {
+				_key = other._key;
+				_value = other._value;
+				_next = other._next;
+				return *this;
+			}
 
 		private:
 			key_type _key; // ключ 
@@ -70,17 +70,17 @@ namespace shti {
 			node<key_type, value_type> * cur_node = nullptr; // указатель на текущий узел
 
 			// конструктор класса
-			explicit _iterator(table_type * owner) : _owner(owner) {
-				while (_owner->data[_index] == nullptr) { // пока не встретим инициализированую ячейку
-					_index++;
-				}; 
-				cur_node = _owner->data[_index];
-			}
-			explicit _iterator(table_type * owner, size_type index) : _owner(owner), _index(index) {
-				while (_owner->data[_index] == nullptr) { // пока не встретим инициализированую ячейку
-					_index++;
+			//explicit _iterator(table_type * owner) : _owner(owner) {
+			//	while (_owner->data[_index] == nullptr && _index < _owner->_capacity) { 
+			//		_index++; // пока не встретим инициализированую ячейку
+			//	}; 
+			//	cur_node = _owner->data[_index];
+			//}
+			explicit _iterator(table_type * owner, size_type index = 0) : _owner(owner), _index(index) {
+				while (_owner->data[_index] == nullptr && _index < _owner->_capacity - 1) {
+					_index++; // пока не встретим инициализированую ячейку
 				};
-				cur_node = _owner->data[index];
+				cur_node = _owner->data[_index];
 			}
 			explicit _iterator(table_type * owner, node<key_type, value_type> * _node) : _owner(owner) {
 				cur_node = _node;
@@ -172,13 +172,13 @@ namespace shti {
 
 		// итераторы указывающие на конец
 		iterator end() noexcept {
-			return iterator(this, _capacity);
+			return iterator(this, _capacity - 1);
 		}
 		const_iterator end() const noexcept {
-			return const_iterator(this, _capacity);
+			return const_iterator(this, _capacity - 1);
 		}
 		const_iterator cend() const noexcept {
-			return const_iterator(this, _capacity);
+			return const_iterator(this, _capacity - 1);
 		}
 
 		// выполняет вставку элемента в таблицу
@@ -238,7 +238,7 @@ namespace shti {
 					result++;
 					continue;
 				}
-				++it;
+				it = find_implementation(key);
 			}
 			return result;
 		}
@@ -281,9 +281,8 @@ namespace shti {
 			size_type last_capacity = _capacity; 
 			_capacity = new_size;
 			node<key_type, value_type> ** temp_data = new node<key_type, value_type> *[new_size];
-			for (size_type i = 0; i < new_size / 2; ++i) {
+			for (size_type i = 0; i < new_size; ++i) {
 				temp_data[i] = nullptr;
-				temp_data[new_size - 1 - i] = nullptr;
 			}
 			_size = 0;
 			std::swap(data, temp_data); // меняем местами области памяти
@@ -294,9 +293,8 @@ namespace shti {
 					cur_node = std::move(cur_node->_next);
 				}
 			}
-			for (size_type i = 0; i < last_capacity / 2; ++i) { // очищаем выделенную память
+			for (size_type i = 0; i < last_capacity; ++i) { // очищаем выделенную память
 				delete temp_data[i];
-				delete temp_data[last_capacity - 1 -i ];
 			}
 			delete[] temp_data;
 		}
@@ -360,15 +358,32 @@ namespace shti {
 		// реализация удаления элементов
 		iterator erase_implementation(iterator itr) {
 			_size--;
-			if (itr.cur_node->_next != nullptr) {
-				node<key_type, value_type> * temp = itr.cur_node;
-				itr.cur_node = itr.cur_node->_next;
-				delete temp;
-				return itr;
+			if (itr.cur_node->_next != nullptr) {	
+				node<key_type, value_type> * perv = nullptr;
+				node<key_type, value_type> * cur = data[itr._index];
+				while (cur != itr.cur_node) {
+					perv = cur;
+					cur = cur->_next;
+				}
+				if (perv == nullptr) {
+					cur->_next = data[itr._index]->_next;
+					data[itr._index]->_next = nullptr;
+					delete data[itr._index];
+					data[itr._index] = cur->_next;
+					return iterator(this, itr._index);
+				}
+				perv->_next = cur->_next;
+				node<key_type, value_type> * temp = cur->_next;
+				cur->_next = nullptr;
+				delete cur;
+				if (temp != nullptr) {
+					return iterator(this, temp, itr._index);
+				}
+				return iterator(this, itr._index + 1);
 			}
-			delete itr.cur_node;
+			delete data[itr._index];
 			data[itr._index] = nullptr;
-			return iterator(this, itr._index+1);
+			return iterator(this, itr._index);
 		}
 
 		// переход от ключа к индексу
