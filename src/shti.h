@@ -19,10 +19,11 @@ namespace shti {
 		out_of_range,
 	};
 
-	template<typename key_type,
-		     typename value_type, 
-		     typename hash_f = std::hash<key_type>,
-		     typename size_type = std::size_t>
+	template< typename key_type,
+		      typename value_type, 
+		      typename hash_f = std::hash<key_type>,
+			  typename allocator = std::allocator<std::pair<key_type, value_type>>, 
+		      typename size_type = std::size_t>
 	class hash_table {
 	private:
 		// класс узла хеш таблицы
@@ -30,12 +31,15 @@ namespace shti {
 			friend class hash_table;
 		public:
 			// конструктор класса
-			node(key_type key, value_type value): _key(key), _value(value) , _next(nullptr){}
+			node(key_type key, value_type value, node<key_type, value_type> * next = nullptr) 
+				: _key(key), _value(value) , _next(next){}
+/* ? */		node(std::pair<key_type, value_type> data) : _key(data.first), _value(data.second), _next(nullptr) { }
 			node() {}
 
 			// деструктор класса
 			~node() {
 				delete _next;
+				_next = nullptr;
 			}
 
 			// возвращает ключ
@@ -57,6 +61,33 @@ namespace shti {
 			value_type _value; // занчение
 			node<key_type, value_type> * _next = nullptr; // указатель на следующий элемент
 		}; 
+
+		using node_type = node<key_type, value_type>;
+		using node_alloc = typename allocator::template rebind<node_type>::other;
+		using node_pointer_alloc = typename allocator::template rebind<node_type*>::other;
+		
+		// выделение пам€ти под узлы таблицы
+		node_type ** allocate_nodes(size_type count) {
+			node_type **data = np_alloc.allocate(count);
+			for (size_type i = 0; i < count; ++i) {
+				data[i] = nullptr;
+			}
+			return data;
+		}
+
+		// освобождение пам€ти 
+		void deallocate_nodes(node_type ** nodes, size_type count) {
+			//np_alloc.destroy(nodes);
+			np_alloc.deallocate(nodes, count);
+		}
+
+		// копирование пам€ти
+		/*void copy_nodes(hash_table & tab) {
+			for (size_type i = 0; i < tab._capacity; ++i) {
+
+			}
+
+		}*/
 
 	public:
 
@@ -131,17 +162,11 @@ namespace shti {
 
 		// конструктор класса
 		hash_table() {
-			data = new node<key_type, value_type>*[_capacity];
-			for (size_type i = 0; i < _capacity; ++i) {
-				data[i] = nullptr;
-			}
+			data = allocate_nodes(_capacity);
 		}
 		hash_table(size_type capasity) {
 			this->_capacity = capasity;
-			data = new node<key_type, value_type>*[_capacity];
-			for (size_type i = 0; i < _capacity; ++i) {
-				data[i] = nullptr;
-			}
+			data = allocate_nodes(_capacity);
 		}
 		hash_table(iterator begin, iterator end) {
 			insert(begin, end);
@@ -153,14 +178,15 @@ namespace shti {
 			std::swap(_size, _other._size);
 			std::swap(_capacity, _other._capacity);
 			std::swap(data, _other.data);
+			hasher = std::move(_other.hasher);
+			np_alloc = std::move(_other.np_alloc);
+			n_alloc = std::move(_other.n_alloc);
 		}
 
 		// деструктор класса
 		~hash_table() {
-			for (size_type i = 0; i < _capacity; ++i) {
-				delete data[i];
-			}
-			delete[] data;
+			clear();
+			deallocate_nodes(data, _capacity);
 		}
 
 		// операторы присвоени€ 
@@ -174,10 +200,13 @@ namespace shti {
 		hash_table & operator=(const hash_table && _other) {
 			if (this != _other) {
 				clear();
+				deallocate_nodes(data, _capacity);
 				std::swap(_size, _other._size);
 				std::swap(_capacity, _other._capacity);
 				std::swap(data, _other.data);
 				hasher = std::move(_other.hasher);
+				np_alloc = std::move(_other.np_alloc);
+				n_alloc = std::move(_other.n_alloc);
 			}
 			return *this;
 		}
@@ -251,9 +280,8 @@ namespace shti {
 			auto it = find_implementation(key);
 			while (it != end()) {
 				if (it->key() == key) {
-					it = erase_implementation(it);
+					erase_implementation(it);
 					result++;
-					continue;
 				}
 				it = find_implementation(key);
 			}
@@ -274,6 +302,9 @@ namespace shti {
 			std::swap(data, ht);
 			std::swap(_capacity, ht._capacity);
 			std::swap(_size, ht._size);
+			std::swap(hasher, _other.hasher);
+			std::swap(np_alloc, _other.np_alloc);
+			std::swap(n_alloc, _other.n_alloc);
 		}
 
 		// возвращает колличество элементов
@@ -285,11 +316,13 @@ namespace shti {
 		// очищает контенер
 		void clear() {
 			for (size_type i = 0; i < _capacity; ++i) {
-				delete data[i];
+				if (data[i] != nullptr) {
+					n_alloc.destroy(data[i]);
+					n_alloc.deallocate(data[i], 1);
+					data[i] = nullptr;
+				}
 			}
-			delete[] data;
 			_size = 0;
-			_capacity = 0;
 		}
 		
 		// возвращает колличесво элементов с указанным ключем
@@ -327,44 +360,46 @@ namespace shti {
 		void rehash(size_type new_size) {
 			size_type last_capacity = _capacity; 
 			_capacity = new_size;
-			node<key_type, value_type> ** temp_data = new node<key_type, value_type> *[new_size];
-			for (size_type i = 0; i < new_size; ++i) {
-				temp_data[i] = nullptr;
-			}
+			node_type ** temp_data = allocate_nodes(new_size);
 			_size = 0;
 			std::swap(data, temp_data); // мен€ем местами области пам€ти
 			for (size_type i = 0; i < last_capacity; ++i) {
-				node<key_type, value_type> * cur_node = std::move(temp_data[i]);
+				node_type * cur_node = std::move(temp_data[i]);
 				while (cur_node != nullptr) {
 					emplace_implementation(cur_node->key(), cur_node->value());
 					cur_node = std::move(cur_node->_next);
 				}
 			}
-			for (size_type i = 0; i < last_capacity; ++i) { // очищаем выделенную пам€ть
-				delete temp_data[i];
+			for (size_type i = 0; i < last_capacity; ++i) {
+				if (temp_data[i] != nullptr) {
+					n_alloc.destroy(temp_data[i]);
+					n_alloc.deallocate(temp_data[i], 1);
+					temp_data[i] = nullptr;
+				}
 			}
-			delete[] temp_data;
+			deallocate_nodes(temp_data, last_capacity);
 		}
 
 		// реализаци€ ставки элементов в таблицу
-		template <typename _key, typename ... elements>
-		iterator emplace_implementation(const _key & key, elements &&... elem) {
+		template <typename _key, typename _value>
+		iterator emplace_implementation(_key && key, _value && value) {
 			if (_size + 1 > int(rehash_coef * _capacity)) {
 				rehash(_capacity * size_multiplier);
 			}
 			size_type index = key_to_index(key); // получаем индекс
-			node<key_type, value_type> * cur_node = data[index];
+			node_type * cur_node = data[index];
 			if (cur_node == nullptr) { // если €чейка пуста€
-				data[index] = new node<key_type, value_type>(key, value_type(std::forward<elements>(elem)...));
-				
+				data[index] = n_alloc.allocate(1);
+				n_alloc.construct(data[index], std::forward<_key>(key), std::forward<_value>(value));
 				_size++;
 				return iterator(this, index); // возвращаем итератор на вставленный элемент
 			}
 			while (cur_node->_next != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
 				cur_node = cur_node->_next;
 			}
-			cur_node->_next = new node<key_type, value_type>(key, value_type(std::forward<elements>(elem)...));
 			_size++;
+			cur_node->_next = n_alloc.allocate(1);
+			n_alloc.construct(cur_node->_next, std::forward<_key>(key), std::forward<_value>(value));
 			return iterator(this, cur_node->_next); // возвращаем итератор на вставленный элемент
 		}
 
@@ -375,7 +410,7 @@ namespace shti {
 			if (data[index] == nullptr) {
 				return end();
 			}
-			node<key_type, value_type> * cur_node = data[index];
+			node_type * cur_node = data[index];
 			while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
 				if (cur_node->key() == key) {
 					return iterator(this, cur_node, index);
@@ -405,33 +440,30 @@ namespace shti {
 
 		// реализаци€ удалени€ элементов
 		iterator erase_implementation(iterator itr) {
-			_size--;
-			if (itr.cur_node->_next != nullptr) {	
-				node<key_type, value_type> * perv = nullptr;
-				node<key_type, value_type> * cur = data[itr._index];
-				while (cur != itr.cur_node) {
-					perv = cur;
-					cur = cur->_next;
+			node_type * cur = data[itr._index]; // текущий
+			node_type * perv = nullptr; // предыдущий узел 
+			while (cur) {
+				if (cur->key() == itr.cur_node->key()) {
+					_size--;
+					node_type * res;
+					if (perv == nullptr) {
+						data[itr._index] = cur->_next;
+						res = data[itr._index];
+					}
+					else {
+						perv->_next = cur->_next;
+						res = cur->_next;
+					}
+					++itr;
+					cur->_next = nullptr; 
+					n_alloc.destroy(cur);
+					n_alloc.deallocate(cur, 1);
+					return itr;
 				}
-				if (perv == nullptr) {
-					cur = data[itr._index]->_next;
-					data[itr._index]->_next = nullptr;
-					delete data[itr._index];
-					data[itr._index] = cur;
-					return iterator(this, itr._index);
-				}
-				perv->_next = cur->_next;
-				node<key_type, value_type> * temp = cur->_next;
-				cur->_next = nullptr;
-				delete cur;
-				if (temp != nullptr) {
-					return iterator(this, temp, itr._index);
-				}
-				return iterator(this, itr._index + 1);
+				perv = cur; 
+				cur = cur->_next;
 			}
-			delete data[itr._index];
-			data[itr._index] = nullptr;
-			return iterator(this, itr._index);
+			return end();
 		}
 
 		// переход от ключа к индексу
@@ -444,8 +476,10 @@ namespace shti {
 		size_type _size = 0; // текущее число элементов
 		float rehash_coef = REHASH_COEF; // коэфициент при котором размер таблицы будет мен€тьс€
 		float size_multiplier = SIZE_INC_MULTIPLIER; // коэффициент увеличени€ размера таблицы
-		node<key_type, value_type> ** data; // данные
-		hash_f hasher;
+		node_type ** data; // данные
+		hash_f hasher; // хеш функци€ 
+		node_alloc n_alloc; 
+		node_pointer_alloc np_alloc; 
 	};
 
 };
