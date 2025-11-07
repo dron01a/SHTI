@@ -1,16 +1,8 @@
 #ifndef __SHTI__
 #define __SHTI__
 
-#ifdef USE_STD_CONTAINERS
-	
-#include <array>
-#include <algorithm>
-#include <vector>
-
-#endif
-
 #define CAPACITY 4
-#define REHASH_COEF 1
+#define REHASH_COEF 0.5
 #define SIZE_INC_MULTIPLIER 2
 
 namespace shti {
@@ -76,7 +68,6 @@ namespace shti {
 
 		// освобождение памяти 
 		void deallocate_nodes(node_type ** nodes, size_type count) {
-			//np_alloc.destroy(nodes);
 			np_alloc.deallocate(nodes, count);
 		}
 
@@ -270,10 +261,8 @@ namespace shti {
 			size_type result = 0;
 			auto it = find_implementation(key);
 			while (it != end()) {
-				if (it->key() == key) {
-					erase_implementation(it);
-					result++;
-				}
+				erase_implementation(it);
+				result++;
 				it = find_implementation(key);
 			}
 			return result;
@@ -354,18 +343,16 @@ namespace shti {
 			node_type ** temp_data = allocate_nodes(new_size);
 			_size = 0;
 			std::swap(data, temp_data); // меняем местами области памяти
+			node_type * cur_node = nullptr;
 			for (size_type i = 0; i < last_capacity; ++i) {
-				node_type * cur_node = std::move(temp_data[i]);
+				cur_node = std::move(temp_data[i]);
 				while (cur_node != nullptr) {
 					emplace_implementation(cur_node->key(), cur_node->value());
 					cur_node = std::move(cur_node->_next);
 				}
-			}
-			for (size_type i = 0; i < last_capacity; ++i) {
 				if (temp_data[i] != nullptr) {
 					n_alloc.destroy(temp_data[i]);
 					n_alloc.deallocate(temp_data[i], 1);
-					temp_data[i] = nullptr;
 				}
 			}
 			deallocate_nodes(temp_data, last_capacity);
@@ -384,8 +371,8 @@ namespace shti {
 			}
 			_size++;
 			cur_node = n_alloc.allocate(1);
-			n_alloc.construct(cur_node, std::forward<_key>(key), std::forward<_value>(value), data[index]);
-			data[index] = cur_node;
+			n_alloc.construct(cur_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
+			data[index] = std::move(cur_node);
 			return iterator(this, cur_node, index); // возвращаем итератор на вставленный элемент
 		}
 
@@ -393,9 +380,6 @@ namespace shti {
 		template <typename _key>
 		iterator find_implementation(const _key & key) {
 			size_type index = key_to_index(key); // получаем индекс элемента
-			if (data[index] == nullptr) {
-				return end();
-			}
 			node_type * cur_node = data[index];
 			while (cur_node != nullptr) { // ищем не занятую ячейку внутри уже существуещей
 				if (cur_node->key() == key) {
