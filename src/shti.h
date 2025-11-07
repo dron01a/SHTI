@@ -33,7 +33,6 @@ namespace shti {
 			// конструктор класса
 			node(key_type key, value_type value, node<key_type, value_type> * next = nullptr) 
 				: _key(key), _value(value) , _next(next){}
-/* ? */		node(std::pair<key_type, value_type> data) : _key(data.first), _value(data.second), _next(nullptr) { }
 			node() {}
 
 			// деструктор класса
@@ -80,14 +79,6 @@ namespace shti {
 			//np_alloc.destroy(nodes);
 			np_alloc.deallocate(nodes, count);
 		}
-
-		// копирование памяти
-		/*void copy_nodes(hash_table & tab) {
-			for (size_type i = 0; i < tab._capacity; ++i) {
-
-			}
-
-		}*/
 
 	public:
 
@@ -388,19 +379,14 @@ namespace shti {
 			}
 			size_type index = key_to_index(key); // получаем индекс
 			node_type * cur_node = data[index];
-			if (cur_node == nullptr) { // если ячейка пустая
-				data[index] = n_alloc.allocate(1);
-				n_alloc.construct(data[index], std::forward<_key>(key), std::forward<_value>(value));
-				_size++;
-				return iterator(this, index); // возвращаем итератор на вставленный элемент
-			}
-			while (cur_node->_next != nullptr) { // ищем не занятую ячейку внутри уже существуещей
+			while (cur_node != nullptr) { // осуществляем поиск не занятой памяти
 				cur_node = cur_node->_next;
 			}
 			_size++;
-			cur_node->_next = n_alloc.allocate(1);
-			n_alloc.construct(cur_node->_next, std::forward<_key>(key), std::forward<_value>(value));
-			return iterator(this, cur_node->_next); // возвращаем итератор на вставленный элемент
+			cur_node = n_alloc.allocate(1);
+			n_alloc.construct(cur_node, std::forward<_key>(key), std::forward<_value>(value), data[index]);
+			data[index] = cur_node;
+			return iterator(this, cur_node, index); // возвращаем итератор на вставленный элемент
 		}
 
 		// реализация поиска элемента
@@ -445,14 +431,11 @@ namespace shti {
 			while (cur) {
 				if (cur->key() == itr.cur_node->key()) {
 					_size--;
-					node_type * res;
 					if (perv == nullptr) {
 						data[itr._index] = cur->_next;
-						res = data[itr._index];
 					}
 					else {
 						perv->_next = cur->_next;
-						res = cur->_next;
 					}
 					++itr;
 					cur->_next = nullptr; 
