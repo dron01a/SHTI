@@ -89,7 +89,7 @@ namespace shti {
 		private:
 			table_type * _owner = nullptr; // таблица которой принадлежит итератор
 			size_type _index = 0; // текущий индекс
-			node<key_type, value_type> * cur_node = nullptr; // указатель на текущий узел
+			node_type * cur_node = nullptr; // указатель на текущий узел
 
 			// конструктор класса
 			explicit _iterator(table_type * owner, size_type index = 0) : _owner(owner), _index(index) {
@@ -312,7 +312,7 @@ namespace shti {
 			if (data[index] == nullptr) {
 				return 0;
 			}
-			node<key_type, value_type> * cur_node = data[index];
+			node_type * cur_node = data[index];
 			while (cur_node != nullptr) { // ищем не занятую ячейку внутри уже существуещей
 				if (cur_node->key() == key) {
 					result++;
