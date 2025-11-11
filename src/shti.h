@@ -1,14 +1,15 @@
 #ifndef __SHTI__
 #define __SHTI__
 
-#define CAPACITY 4
+#define CAPACITY 8
 #define REHASH_COEF 0.5
-#define SIZE_INC_MULTIPLIER 2
+#define SIZE_INC_MULTIPLIER 1.5
 
 namespace shti {
 
 	enum error_type {
-		out_of_range,
+		out_of_range = 0,
+		key_is_used,
 	};
 
 	template< typename key_type,
@@ -16,14 +17,14 @@ namespace shti {
 		      typename hash_f = std::hash<key_type>,
 			  typename allocator = std::allocator<std::pair<key_type, value_type>>, 
 		      typename size_type = std::size_t>
-	class hash_table {
-	private:
+	class basic_hash_table {
+	protected:
 		// класс узла хеш таблицы
-		template<typename key_type, typename value_type> class node {
-			friend class hash_table;
+		template<typename key_type, typename value_type, typename table> class node {
+			friend table;
 		public:
 			// конструктор класса
-			node(key_type key, value_type value, node<key_type, value_type> * next = nullptr) 
+			node(key_type key, value_type value, node<key_type, value_type, table> * next = nullptr) 
 				: _key(key), _value(value) , _next(next){}
 			node() {}
 
@@ -40,23 +41,26 @@ namespace shti {
 			value_type & value() { return _value; }
 
 			// оператор присваивания 
-			node<key_type, value_type> & operator=(node<key_type, value_type> other) {
+			node<key_type, value_type, table> & operator=(node<key_type, value_type, table> other) {
 				_key = other._key;
 				_value = other._value;
 				_next = other._next;
 				return *this;
 			}
+			node<key_type, value_type, table> * _next = nullptr; // указатель на следующий элемент
 
 		private:
 			key_type _key; // ключ 
 			value_type _value; // занчение
-			node<key_type, value_type> * _next = nullptr; // указатель на следующий элемент
 		}; 
 
-		using node_type = node<key_type, value_type>;
+		using node_type = node<key_type, value_type, basic_hash_table>;
 		using node_alloc = typename allocator::template rebind<node_type>::other;
 		using node_pointer_alloc = typename allocator::template rebind<node_type*>::other;
 		
+		node_type ** data; // данные
+
+	private:
 		// выделение памяти под узлы таблицы
 		node_type ** allocate_nodes(size_type count) {
 			node_type **data = np_alloc.allocate(count);
@@ -95,7 +99,7 @@ namespace shti {
 			explicit _iterator(table_type * owner, size_type index = 0) : _owner(owner), _index(index) {
 				find_next_init_node();
 			}
-			explicit _iterator(table_type * owner, node<key_type, value_type> * _node, size_type pos = 0) 
+			explicit _iterator(table_type * owner, node_type * _node, size_type pos = 0)
 				: _owner(owner), _index(pos) {
 				cur_node = _node;
 			}
@@ -114,11 +118,11 @@ namespace shti {
 				return !(*this == it);
 			}
 
-			node<key_type, value_type> & operator*() const {
+			node_type & operator*() const {
 				return *cur_node;
 			}
 
-			node<key_type, value_type> * operator->() const {
+			node_type * operator->() const {
 				return cur_node;
 			}
 
@@ -139,24 +143,24 @@ namespace shti {
 			}
 		};
 
-		using iterator = _iterator<key_type, value_type, hash_table>;
-		using const_iterator = _iterator<const key_type, const value_type, const hash_table>;
+		using iterator = _iterator<key_type, value_type, basic_hash_table>;
+		using const_iterator = _iterator<const key_type, const value_type, const basic_hash_table>;
 
 		// конструктор класса
-		hash_table() {
+		basic_hash_table() {
 			data = allocate_nodes(_capacity);
 		}
-		hash_table(size_type capasity) {
+		basic_hash_table(size_type capasity) {
 			this->_capacity = capasity;
 			data = allocate_nodes(_capacity);
 		}
-		hash_table(iterator begin, iterator end) {
+		basic_hash_table(iterator begin, iterator end) {
 			insert(begin, end);
 		}
-		hash_table(hash_table & _other) : hash_table(_other._capacity) {
+		basic_hash_table(basic_hash_table & _other) : basic_hash_table(_other._capacity) {
 			insert(_other.begin(), _other.end());
 		}
-		hash_table(hash_table && _other) {
+		basic_hash_table(basic_hash_table && _other) {
 			std::swap(_size, _other._size);
 			std::swap(_capacity, _other._capacity);
 			std::swap(data, _other.data);
@@ -166,20 +170,20 @@ namespace shti {
 		}
 
 		// деструктор класса
-		~hash_table() {
+		~basic_hash_table() {
 			clear();
 			deallocate_nodes(data, _capacity);
 		}
 
 		// операторы присвоения 
-		hash_table & operator=(const hash_table & table) {
+		basic_hash_table & operator=(const basic_hash_table & table) {
 			if (this != table) {
-				hash_table temp(table);
+				basic_hash_table temp(table);
 				swap(temp);
 			}
 			return *this;
 		}
-		hash_table & operator=(const hash_table && _other) {
+		basic_hash_table & operator=(const basic_hash_table && _other) {
 			if (this != _other) {
 				clear();
 				deallocate_nodes(data, _capacity);
@@ -278,7 +282,7 @@ namespace shti {
 		}
 
 		// меняет местами с другой таблицей
-		void swap(hash_table & ht) {
+		void swap(basic_hash_table & ht) {
 			std::swap(data, ht);
 			std::swap(_capacity, ht._capacity);
 			std::swap(_size, ht._size);
@@ -292,6 +296,9 @@ namespace shti {
 
 		// возвращает зарезервиврованное колличество элементов
 		size_type capacity() const noexcept { return _capacity; }
+
+		// возвращает true если элемент пустой
+		bool empty() { return _size == 0; }
 
 		// очищает контенер
 		void clear() {
@@ -335,7 +342,12 @@ namespace shti {
 			return hasher;
 		}
 
-	private:
+		// Возвращает аллокатор
+		node_pointer_alloc get_allocator() const {
+			return np_alloc;
+		}
+
+	protected:
 		// перераспределение элементов в таблице
 		void rehash(size_type new_size) {
 			size_type last_capacity = _capacity; 
@@ -358,6 +370,9 @@ namespace shti {
 			deallocate_nodes(temp_data, last_capacity);
 		}
 
+		// вовзвращает свободную ячейку для записи
+		virtual node_type * get_storage(key_type & key, size_type index) = 0;
+
 		// реализация ставки элементов в таблицу
 		template <typename _key, typename _value>
 		iterator emplace_implementation(_key && key, _value && value) {
@@ -365,10 +380,11 @@ namespace shti {
 				rehash(_capacity * size_multiplier);
 			}
 			size_type index = key_to_index(key); // получаем индекс
-			node_type * cur_node = data[index];
+			node_type * cur_node = get_storage(key, index);
+				/*data[index];
 			while (cur_node != nullptr) { // осуществляем поиск не занятой памяти
 				cur_node = cur_node->_next;
-			}
+			} */ 
 			_size++;
 			cur_node = n_alloc.allocate(1);
 			n_alloc.construct(cur_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
@@ -391,7 +407,7 @@ namespace shti {
 		}
 		template <typename _key> 
 		const_iterator find_implementation(const _key & key) const { 
-			return const_cast<hash_table *>(this)->find_implementation(key);
+			return const_cast<basic_hash_table *>(this)->find_implementation(key);
 		}
 
 		// реализация выдачи по индексу
@@ -405,7 +421,7 @@ namespace shti {
 		}
 		template <typename _key>
 		const value_type & at_implementation(const _key & key) const {
-			return const_cast<hash_table*>(this)->at_implementation(key);
+			return const_cast<basic_hash_table*>(this)->at_implementation(key);
 		}
 
 		// реализация удаления элементов
@@ -443,11 +459,85 @@ namespace shti {
 		size_type _size = 0; // текущее число элементов
 		float rehash_coef = REHASH_COEF; // коэфициент при котором размер таблицы будет меняться
 		float size_multiplier = SIZE_INC_MULTIPLIER; // коэффициент увеличения размера таблицы
-		node_type ** data; // данные
 		hash_f hasher; // хеш функция 
 		node_alloc n_alloc; 
 		node_pointer_alloc np_alloc; 
 	};
+
+
+	// хеш таблица
+	template< typename key_type,
+		typename value_type,
+		typename hash_f = std::hash<key_type>,
+		typename allocator = std::allocator<std::pair<key_type, value_type>>,
+		typename size_type = std::size_t>
+		class hash_table : protected basic_hash_table<key_type, value_type, hash_f, allocator, size_type> {
+			
+			using base_table = basic_hash_table<key_type, value_type, hash_f, allocator, size_type>;
+
+		public: 
+			using base_table::begin;
+			using base_table::end;
+			using base_table::cbegin;
+			using base_table::cend;
+			using base_table::insert;
+			using base_table::emplace;
+			using base_table::erase;
+			using base_table::operator=;
+			using base_table::operator[];
+			using base_table::at;
+			using base_table::swap;
+			using base_table::size;
+			using base_table::capacity;
+			using base_table::empty;
+			using base_table::clear;
+			using base_table::count;
+			using base_table::resize;
+			using base_table::get_hash_func;
+			using base_table::get_allocator;
+
+			using base_table::_iterator;
+
+			using iterator = base_table::_iterator<key_type, value_type, basic_hash_table>;
+			using const_iterator = base_table::_iterator<const key_type, const value_type, const basic_hash_table>;
+
+			// конструктор класса
+			hash_table() : basic_hash_table() { } ;
+			hash_table(size_type capasity) : basic_hash_table(capasity) { }
+			hash_table(iterator begin, iterator end) : basic_hash_table(begin, end) { }
+			hash_table(basic_hash_table & _other) : basic_hash_table(_other) { }
+			hash_table(basic_hash_table && _other) : basic_hash_table(_other) { }
+
+		protected:
+			
+			using base_table::node;
+			using base_table::node_type;
+			using base_table::data;
+
+			node_type* get_storage(key_type & key, size_type index) {
+				node_type* result = data[index];
+				while (result) {
+					if (result->key() == key) {
+						throw error_type::key_is_used;
+					}
+					result = result->_next;
+				}
+				return result;
+			}
+
+	};
+
+	//// хеш таблица допускающая хранение значений под одинаковыми ключами
+	//template< typename key_type,
+	//	typename value_type,
+	//	typename hash_f = std::hash<key_type>,
+	//	typename allocator = std::allocator<std::pair<key_type, value_type>>,
+	//	typename size_type = std::size_t>
+	//	class hash_multitable : protected basic_hash_table {
+
+
+
+	//};
 
 };
 
