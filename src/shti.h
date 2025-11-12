@@ -24,7 +24,7 @@ namespace shti {
 			friend table;
 		public:
 			// конструктор класса
-			node(key_type key, value_type value, node<key_type, value_type, table> * next = nullptr) 
+			node(key_type key, value_type value, node * next = nullptr) 
 				: _key(key), _value(value) , _next(next){}
 			node() {}
 
@@ -41,13 +41,23 @@ namespace shti {
 			value_type & value() { return _value; }
 
 			// оператор присваивания 
-			node<key_type, value_type, table> & operator=(node<key_type, value_type, table> other) {
+			node & operator=(node& other) noexcept{
 				_key = other._key;
 				_value = other._value;
 				_next = other._next;
 				return *this;
 			}
-			node<key_type, value_type, table> * _next = nullptr; // указатель на следующий элемент
+
+			node& operator=(node && other) noexcept {
+				delete _next;
+				_key = std::move(other._key);
+				_value = std::move(other._value);
+				_next = other._next;
+				other._next = nullptr;
+				return *this;
+			}
+
+			node * _next = nullptr; // указатель на следующий элемент
 
 		private:
 			key_type _key; // ключ 
@@ -64,9 +74,7 @@ namespace shti {
 		// выделение памяти под узлы таблицы
 		node_type ** allocate_nodes(size_type count) {
 			node_type **data = np_alloc.allocate(count);
-			for (size_type i = 0; i < count; ++i) {
-				data[i] = nullptr;
-			}
+			std::memset(data, 0, count * sizeof(node_type*));
 			return data;
 		}
 
@@ -283,12 +291,12 @@ namespace shti {
 
 		// меняет местами с другой таблицей
 		void swap(basic_hash_table & ht) {
-			std::swap(data, ht);
+			std::swap(data, ht.data);
 			std::swap(_capacity, ht._capacity);
 			std::swap(_size, ht._size);
-			std::swap(hasher, _other.hasher);
-			std::swap(np_alloc, _other.np_alloc);
-			std::swap(n_alloc, _other.n_alloc);
+			std::swap(hasher, ht.hasher);
+			std::swap(np_alloc, ht.np_alloc);
+			std::swap(n_alloc, ht.n_alloc);
 		}
 
 		// возвращает колличество элементов
@@ -350,6 +358,9 @@ namespace shti {
 	protected:
 		// перераспределение элементов в таблице
 		void rehash(size_type new_size) {
+			if (new_size == _capacity) {
+				return;
+			}
 			size_type last_capacity = _capacity; 
 			_capacity = new_size;
 			node_type ** temp_data = allocate_nodes(new_size);
@@ -357,14 +368,13 @@ namespace shti {
 			std::swap(data, temp_data); // меняем местами области памяти
 			node_type * cur_node = nullptr;
 			for (size_type i = 0; i < last_capacity; ++i) {
-				cur_node = std::move(temp_data[i]);
+				cur_node = temp_data[i];
 				while (cur_node != nullptr) {
-					emplace_implementation(cur_node->key(), cur_node->value());
-					cur_node = cur_node->_next;
-				}
-				if (temp_data[i] != nullptr) {
-					n_alloc.destroy(temp_data[i]);
-					n_alloc.deallocate(temp_data[i], 1);
+					node_type * next = cur_node->_next;
+					size_type index = key_to_index(cur_node->key());
+					cur_node->_next = data[index];
+					data[index] = cur_node;
+					cur_node = next;
 				}
 			}
 			deallocate_nodes(temp_data, last_capacity);
@@ -575,9 +585,6 @@ namespace shti {
 			node_type* get_storage(key_type & key, size_type index) {
 				node_type* result = data[index];
 				while (result) {
-				/*	if (result->key() == key) {
-						throw error_type::key_is_used;
-					}*/
 					result = result->_next;
 				}
 				return result;
