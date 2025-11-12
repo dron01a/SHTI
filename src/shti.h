@@ -360,7 +360,7 @@ namespace shti {
 				cur_node = std::move(temp_data[i]);
 				while (cur_node != nullptr) {
 					emplace_implementation(cur_node->key(), cur_node->value());
-					cur_node = std::move(cur_node->_next);
+					cur_node = cur_node->_next;
 				}
 				if (temp_data[i] != nullptr) {
 					n_alloc.destroy(temp_data[i]);
@@ -381,10 +381,6 @@ namespace shti {
 			}
 			size_type index = key_to_index(key); // получаем индекс
 			node_type * cur_node = get_storage(key, index);
-				/*data[index];
-			while (cur_node != nullptr) { // осуществляем поиск не занятой памяти
-				cur_node = cur_node->_next;
-			} */ 
 			_size++;
 			cur_node = n_alloc.allocate(1);
 			n_alloc.construct(cur_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
@@ -527,17 +523,67 @@ namespace shti {
 
 	};
 
-	//// хеш таблица допускающая хранение значений под одинаковыми ключами
-	//template< typename key_type,
-	//	typename value_type,
-	//	typename hash_f = std::hash<key_type>,
-	//	typename allocator = std::allocator<std::pair<key_type, value_type>>,
-	//	typename size_type = std::size_t>
-	//	class hash_multitable : protected basic_hash_table {
+	// хеш таблица допускающая хранение значений под одинаковыми ключами
+	template< typename key_type,
+		typename value_type,
+		typename hash_f = std::hash<key_type>,
+		typename allocator = std::allocator<std::pair<key_type, value_type>>,
+		typename size_type = std::size_t>
+		class hash_multitable : protected basic_hash_table<key_type, value_type, hash_f, allocator, size_type> {
 
+		using base_table = basic_hash_table<key_type, value_type, hash_f, allocator, size_type>;
 
+		public:
+			using base_table::begin;
+			using base_table::end;
+			using base_table::cbegin;
+			using base_table::cend;
+			using base_table::insert;
+			using base_table::emplace;
+			using base_table::erase;
+			using base_table::operator=;
+			using base_table::operator[];
+			using base_table::at;
+			using base_table::swap;
+			using base_table::size;
+			using base_table::capacity;
+			using base_table::empty;
+			using base_table::clear;
+			using base_table::count;
+			using base_table::resize;
+			using base_table::get_hash_func;
+			using base_table::get_allocator;
 
-	//};
+			using base_table::_iterator;
+
+			using iterator = base_table::_iterator<key_type, value_type, basic_hash_table>;
+			using const_iterator = base_table::_iterator<const key_type, const value_type, const basic_hash_table>;
+
+			// конструктор класса
+			hash_multitable() : basic_hash_table() { };
+			hash_multitable(size_type capasity) : basic_hash_table(capasity) { }
+			hash_multitable(iterator begin, iterator end) : basic_hash_table(begin, end) { }
+			hash_multitable(basic_hash_table & _other) : basic_hash_table(_other) { }
+			hash_multitable(basic_hash_table && _other) : basic_hash_table(_other) { }
+
+		protected:
+
+			using base_table::node;
+			using base_table::node_type;
+			using base_table::data;
+
+			node_type* get_storage(key_type & key, size_type index) {
+				node_type* result = data[index];
+				while (result) {
+				/*	if (result->key() == key) {
+						throw error_type::key_is_used;
+					}*/
+					result = result->_next;
+				}
+				return result;
+			}
+
+	};
 
 };
 
