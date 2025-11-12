@@ -381,7 +381,7 @@ namespace shti {
 		}
 
 		// вовзвращает свободную ячейку для записи
-		virtual node_type * get_storage(key_type & key, size_type index) = 0;
+		virtual void valid_key(key_type & key, size_type index) = 0;
 
 		// реализация ставки элементов в таблицу
 		template <typename _key, typename _value>
@@ -390,12 +390,12 @@ namespace shti {
 				rehash(_capacity * size_multiplier);
 			}
 			size_type index = key_to_index(key); // получаем индекс
-			node_type * cur_node = get_storage(key, index);
+			valid_key(key, index);
 			_size++;
-			cur_node = n_alloc.allocate(1);
-			n_alloc.construct(cur_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
-			data[index] = std::move(cur_node);
-			return iterator(this, cur_node, index); // возвращаем итератор на вставленный элемент
+			node_type * new_node = n_alloc.allocate(1);
+			n_alloc.construct(new_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
+			data[index] = new_node;
+			return iterator(this, new_node, index); // возвращаем итератор на вставленный элемент
 		}
 
 		// реализация поиска элемента
@@ -520,7 +520,7 @@ namespace shti {
 			using base_table::node_type;
 			using base_table::data;
 
-			node_type* get_storage(key_type & key, size_type index) {
+			void valid_key(key_type & key, size_type index) {
 				node_type* result = data[index];
 				while (result) {
 					if (result->key() == key) {
@@ -528,7 +528,6 @@ namespace shti {
 					}
 					result = result->_next;
 				}
-				return result;
 			}
 
 	};
@@ -582,12 +581,11 @@ namespace shti {
 			using base_table::node_type;
 			using base_table::data;
 
-			node_type* get_storage(key_type & key, size_type index) {
+			void valid_key(key_type & key, size_type index) {
 				node_type* result = data[index];
 				while (result) {
 					result = result->_next;
 				}
-				return result;
 			}
 
 	};
