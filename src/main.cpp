@@ -69,7 +69,7 @@ int main() {
 		size_t operator()(int i) { return abs(i); }; // простая хеш функция
 	};
 	shti::hash_multitable<int, int, int_hash> ht;
-	shti::hash_multitable<int, int, int_hash>::iterator t = ht.begin();
+	//shti::hash_multitable<int, int, int_hash>::iterator t = ht.begin();
 	ht.insert({ {4 , 4}, {1,2} , {2,1} , { -1, 2 }, {1, 22}, { 3, 2 } });
 	//ht.erase(1);
 
@@ -77,6 +77,7 @@ int main() {
 		ht.insert(i, i);
 	}
 
+	shti::hash_multitable<int, int, int_hash> g = ht;
 	/*for (auto it = ht.begin(); it < ht.end) {
 
 	}
@@ -87,11 +88,11 @@ int main() {
 	//auto res = gh.end();
 	////gh.insert(ht.begin(), ht.end());
 	for (auto it = ht.begin(); it != ht.end(); ++it ) {
-		std::cout << it->key() << " " << it->value() << std::endl;
+		std::cout << it->first << " " << it->second << std::endl;
 	}
-	for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
-		insert_erase_test_int_int(it->first, it->second);
-	}
+	//for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
+	//	insert_erase_test_int_int(it->first, it->second);
+	//}
 	//ht_test_erase(2500000);
 	return 0;
 }
