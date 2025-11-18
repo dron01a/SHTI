@@ -14,19 +14,21 @@ namespace shti {
 	};
 
 	template< typename key_type,
-		      typename value_type, 
+		      typename T, 
 		      typename hash_f = std::hash<key_type>,
-			  typename allocator = std::allocator<std::pair<key_type, value_type>>, 
+			  typename allocator = std::allocator<std::pair<key_type, T>>, 
 		      typename size_type = std::size_t>
 	class basic_hash_table {
+		using value_pair = std::pair<const key_type, T>;
 	protected:
 
 		// класс узла хеш таблицы
-		template<typename key_type, typename value_type> struct node {
+		template<typename key_type, typename T>
+		struct node {
 		public:
 			// конструктор класса
-			node(key_type _key, value_type _value, node * _next = nullptr) 
-				: key(_key), value(_value) , next(_next){}
+			node(key_type _key, T _value, node * _next = nullptr) 
+				: data(_key, _value) , next(_next){}
 			node() {}
 
 			// деструктор класса
@@ -37,28 +39,27 @@ namespace shti {
 
 			// оператор присваивания 
 			node & operator=(node& other) noexcept{
-				_key = other._key;
-				_value = other._value;
+				data.first = other.first;
+				data.second = other.second;
 				next = other.next;
 				return *this;
 			}
 
 			node& operator=(node && other) noexcept {
 				delete next;
-				_key = std::move(other._key);
-				_value = std::move(other._value);
+				data.first = std::move(other.first);
+				data.second = std::move(other.second);
 				next = other.next;
 				other.next = nullptr;
 				return *this;
 			}
 
-			node * next = nullptr; // указатель на следующий элемент
-			key_type key; // ключ 
-			value_type value; // занчение
+			std::pair<const key_type, T> data; // данные
+			node * next; // значение
 
 		}; 
 
-		using node_type = node<key_type, value_type>;
+		using node_type = node<key_type, T>;
 		using node_alloc = typename allocator::template rebind<node_type>::other;
 		using node_pointer_alloc = typename allocator::template rebind<node_type*>::other;
 		
@@ -80,23 +81,23 @@ namespace shti {
 	public:
 
 		// класс итератора
-		template<typename key_t, typename value_t, typename table_t, bool _const>
+		template<typename table_t, bool _const>
 		class _iterator {
 		public:
 			// для совместимости с STL
 			using iterator_category = std::forward_iterator_tag;
 			using difference_type = std::ptrdiff_t;
-			using value_type = std::pair<key_t, value_t>;
-			using pointer = value_type *;
-			using reference = value_type &;
+			using value_type = std::pair<const key_type, T>;
+			using pointer = std::conditional_t<_const, const value_type *, value_type *>;
+			using reference = std::conditional_t<_const, const value_type &, value_type &>;
 			
 			using table_type = std::conditional_t<_const, const table_t, table_t>;
-			using node_pointer = std::conditional_t<_const, const node_type*, node_type *>;
+			using node_pointer = std::conditional_t<_const, const node_type *, node_type *>;
 
 		private:
 			table_type * _owner = nullptr; // таблица которой принадлежит итератор
 			size_type _index = 0; // текущий индекс
-			node_pointer cur_node = nullptr; // указатель на текущий узелs
+			node_pointer cur_node = nullptr; // указатель на текущий узел
 
 			// выполняет поиск следующей инициализированной ячейки
 			void find_next_init_node() {
@@ -105,53 +106,6 @@ namespace shti {
 				};
 				cur_node = _owner->data[_index];
 			}
-
-			// прокси для ссылки 
-			class ref_proxy {
-			private:
-				node_pointer _node = nullptr; // указатель на узел 
-			public:
-				// конструктор 
-				ref_proxy(node_pointer node) : _node(node) {};
-				
-				// переобразование в пару
-				operator value_type() const {
-					return{ _node->key, _node->value };
-				}
-
-				// доступ к ключу
-				const key_t & first() {
-					return _node->key;
-				}
-
-				// доступ к занчению
-				std::conditional_t<_const, const value_t &, value_t &> second() {
-					return _node->value;
-				}
-			};
-
-			// прокси для указателя
-			class point_proxy {
-			private:
-				node_type * node; 
-				mutable value_type temp;
-
-			public:
-				point_proxy(node_type * _node) : node(_node) {
-					if (_node) {
-						temp.first = _node->key;
-						temp.second = _node->value;
-					}
-				};
-
-				value_type * operator->() {
-					if (node) {
-						temp.first = node->key;
-						temp.second = node->value;
-					}
-					return &temp;
-				}
-			};
 
 		public:
 			// конструктор класса
@@ -163,23 +117,25 @@ namespace shti {
 				: _owner(owner), _index(pos), cur_node(_node) {}
 
 			template<bool iter_const, typename = std::enable_if_t<_const || !iter_const>>
-			_iterator(const _iterator<key_t, value_t, table_t, iter_const> & _iter)
+			_iterator(const _iterator<table_t, iter_const> & _iter)
 				: _owner(_iter._owner), _index(_iter._index), cur_node(_iter.cur_node) {}
 
 			// оператры сравнения
-			bool operator==(const _iterator & it) const {
+			template<bool oth_const>
+			bool operator==(const _iterator<table_t, oth_const> & it) const {
 				return _owner == it._owner && _index == it._index && it.cur_node == cur_node;
 			}
-			bool operator!=(const _iterator & it) const {
+			template<bool oth_const>
+			bool operator!=(const _iterator<table_t, oth_const> & it) const {
 				return !(*this == it);
 			}
 
-			ref_proxy operator*() const {
-				return ref_proxy(cur_node);
+			reference operator*() const {
+				return cur_node->data;
 			}
 
-			point_proxy operator->() const {
-				return point_proxy(cur_node);
+			pointer operator->() const {
+				return &cur_node->data;
 			}
 
 			// инкремент
@@ -204,8 +160,8 @@ namespace shti {
 			size_type get_index() const { return _index; }
 		};
 
-		using iterator = _iterator<key_type, value_type, basic_hash_table, false>;
-		using const_iterator = _iterator<key_type, value_type, basic_hash_table, true>;
+		using iterator = _iterator<basic_hash_table, false>;
+		using const_iterator = _iterator<basic_hash_table, true>;
 
 		// конструктор класса
 		basic_hash_table() {
@@ -215,11 +171,9 @@ namespace shti {
 			this->_capacity = capasity;
 			data = allocate_nodes(_capacity);
 		}
-		basic_hash_table(iterator begin, iterator end) {
-			insert(begin, end);
-		}
-		basic_hash_table(const basic_hash_table & _other) : basic_hash_table(_other._capacity) {
-			insert(_other.begin(), _other.end());
+		basic_hash_table(const basic_hash_table & _other) {
+			this->_capacity = _other._capacity;
+			data = allocate_nodes(_capacity);
 		}
 		basic_hash_table(basic_hash_table && _other) {
 			std::swap(_size, _other._size);
@@ -264,40 +218,49 @@ namespace shti {
 		const_iterator cbegin() const noexcept { return const_iterator(this); }
 
 		// итераторы указывающие на конец
-		iterator end() noexcept {
-			return iterator(this, _capacity - 1);
-		}
-		const_iterator end() const noexcept {
-			return const_iterator(this, _capacity - 1);
-		}
-		const_iterator cend() const noexcept {
-			return const_iterator(this, _capacity - 1);
-		}
+		iterator end() noexcept { return iterator(this, _capacity - 1); }
+		const_iterator end() const noexcept { return const_iterator(this, _capacity - 1); }
+		const_iterator cend() const noexcept { return const_iterator(this, _capacity - 1); }
 
 		// выполняет вставку элемента в таблицу
-		iterator insert(key_type key, const value_type & value) {
-			return emplace_implementation(key, value);
+		std::pair<iterator, bool> insert(const value_pair & value) {
+			return emplace(value.first, value.second);
 		}
-		iterator insert(key_type key, value_type && value) {
-			return emplace_implementation(key, std::move(value));
+		std::pair<iterator, bool> insert(value_pair && value) {
+			return emplace(std::move(value.first), std::move(value.second));
 		}
 		template<typename iter_t>
 		void insert(iter_t begin, iter_t end) {
 			for (; begin != end; ++begin) {
-				insert(begin); // добавляем элементы из списка
+				emplace(begin->first, begin->second); // добавляем элементы из списка
 			}
 		}
-		iterator insert(std::pair<key_type, value_type> data) {
-			return emplace_implementation(data.first, data.second);
-		}
-		iterator insert(std::initializer_list<std::pair<key_type, value_type>> data_list) {
+		iterator insert(std::initializer_list<value_pair> data_list) {
 			for (auto it = data_list.begin(); it != data_list.end(); it++) {
-				insert(*it); // добавляем элементы из списка
+				emplace(it->first, it->second); // добавляем элементы из списка
 			} 
 			return find(data_list.end()->first);
 		}
-		template <typename... elem> iterator emplace(elem &&... _elem) {
-			return emplace_implementation(std::forward<elem>(_elem)...);
+		template <typename K, typename V>
+		std::pair<iterator, bool> emplace(K && _key, V && _value) {	
+			size_type index = key_to_index(_key); // получаем индекс
+			if (valid_key(_key, index)) {
+				if (_size + 1 > int(rehash_coef * _capacity)) {
+					rehash(_capacity * size_multiplier);
+				}
+				_size++;
+				node_type * new_node = n_alloc.allocate(1);
+				try {
+					n_alloc.construct(new_node, _key, _value, std::move(data[index]));
+				}
+				catch (...) {
+					n_alloc.deallocate(new_node, 1);
+					throw error_type::value_type_construct_error;
+				}
+				data[index] = new_node;
+				return{ iterator(this, new_node, index), true }; // возвращаем итератор на вставленный элемент
+			}
+			return{ find(_key), false }; // возвращаем итератор на существующий элемент
 		}
 
 		// выполняет поиск элемента в таблице по ключу
@@ -309,15 +272,15 @@ namespace shti {
 		}
 
 		// оператор выдачи по индексу
-		value_type & operator[](const key_type &key) {
+		T & operator[](const key_type &key) {
 			return find_implementation(key)->value;
 		}
 
 		// выдает элемент, но с проверкой
-		value_type & at(const key_type & key) {
+		T & at(const key_type & key) {
 			return at_implementation(key);
 		}
-		const value_type & at(const key_type & key) const {
+		const T & at(const key_type & key) const {
 			return at_implementation(key);
 		}
 
@@ -409,6 +372,9 @@ namespace shti {
 		}
 
 	protected:
+		// вовзвращает свободную ячейку для записи
+		virtual bool valid_key(const key_type & key, size_type index) = 0;
+		
 		// перераспределение элементов в таблице
 		void rehash(size_type new_size) {
 			if (new_size == _capacity) {
@@ -424,7 +390,7 @@ namespace shti {
 				cur_node = temp_data[i];
 				while (cur_node != nullptr) {
 					next = cur_node->next;
-					size_type index = key_to_index(cur_node->key());
+					size_type index = key_to_index(cur_node->data.first);
 					cur_node->next = data[index];
 					data[index] = cur_node;
 					cur_node = next;
@@ -433,29 +399,26 @@ namespace shti {
 			deallocate_nodes(temp_data, last_capacity);
 		}
 
-		// вовзвращает свободную ячейку для записи
-		virtual void valid_key(key_type & key, size_type index) = 0;
-
-		// реализация ставки элементов в таблицу
-		template <typename _key, typename _value>
-		iterator emplace_implementation(_key && key, _value && value) {
-			if (_size + 1 > int(rehash_coef * _capacity)) {
-				rehash(_capacity * size_multiplier);
-			}
-			size_type index = key_to_index(key); // получаем индекс
-			valid_key(key, index);
-			_size++;
-			node_type * new_node = n_alloc.allocate(1);
-			try {
-				n_alloc.construct(new_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
-			}
-			catch (...) {
-				n_alloc.deallocate(new_node, 1);
-				throw error_type::value_type_construct_error;
-			}
-			data[index] = new_node;
-			return iterator(this, new_node, index); // возвращаем итератор на вставленный элемент
-		}
+		//// реализация ставки элементов в таблицу !!!!
+		//template <typename _key, typename _value>
+		//std::pair<iterator, bool> emplace_implementation(_key && key, _value && value) {
+		//	if (_size + 1 > int(rehash_coef * _capacity)) {
+		//		rehash(_capacity * size_multiplier);
+		//	}
+		//	size_type index = key_to_index(key); // получаем индекс
+		//	valid_key(key, index);
+		//	_size++;
+		//	node_type * new_node = n_alloc.allocate(1);
+		//	try {
+		//		n_alloc.construct(new_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
+		//	}
+		//	catch (...) {
+		//		n_alloc.deallocate(new_node, 1);
+		//		throw error_type::value_type_construct_error;
+		//	}
+		//	data[index] = new_node;
+		//	return{ iterator(this, new_node, index), true }; // возвращаем итератор на вставленный элемент
+		//}
 
 		// реализация поиска элемента
 		template <typename _key>
@@ -463,7 +426,7 @@ namespace shti {
 			size_type index = key_to_index(key); // получаем индекс элемента
 			node_type * cur_node = data[index];
 			while (cur_node != nullptr) { // ищем не занятую ячейку внутри уже существуещей
-				if (cur_node->key == key) {
+				if (cur_node->data.first == key) {
 					return iterator(this, cur_node, index);
 				}
 				cur_node = cur_node->next;
@@ -477,7 +440,7 @@ namespace shti {
 
 		// реализация выдачи по индексу
 		template <typename _key>
-		value_type & at_implementation(const _key & key) {
+		T & at_implementation(const _key & key) {
 			iterator res = find_implementation(key);
 			if (res == end()) {
 				throw shti::error_type::out_of_range;
@@ -485,7 +448,7 @@ namespace shti {
 			return res->value;
 		}
 		template <typename _key>
-		const value_type & at_implementation(const _key & key) const {
+		const T & at_implementation(const _key & key) const {
 			return const_cast<basic_hash_table*>(this)->at_implementation(key);
 		}
 
@@ -497,7 +460,7 @@ namespace shti {
 			node_type * cur = data[itr.get_index()]; // текущий
 			node_type * perv = nullptr; // предыдущий узел 
 			while (cur) {
-				if (cur->key == itr.get_node()->key) {
+				if (cur->data.first == itr->first) {
 					_size--;
 					if (perv == nullptr) {
 						data[itr.get_index()] = cur->next;
@@ -535,13 +498,13 @@ namespace shti {
 
 	// хеш таблица
 	template< typename key_type,
-		typename value_type,
+		typename T,
 		typename hash_f = std::hash<key_type>,
-		typename allocator = std::allocator<std::pair<key_type, value_type>>,
+		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t>
-		class hash_table : protected basic_hash_table<key_type, value_type, hash_f, allocator, size_type> {
+		class hash_table : protected basic_hash_table<key_type, T, hash_f, allocator, size_type> {
 			
-			using base_table = basic_hash_table<key_type, value_type, hash_f, allocator, size_type>;
+			using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type>;
 
 		public: 
 			using base_table::begin;
@@ -566,15 +529,17 @@ namespace shti {
 
 			using base_table::_iterator;
 
-			using iterator = _iterator<key_type, value_type, basic_hash_table, false>;
-			using const_iterator = _iterator<key_type, value_type, basic_hash_table, true>;
+			using iterator = _iterator<basic_hash_table, false>;
+			using const_iterator = _iterator<basic_hash_table, true>;
 
 			// конструктор класса
 			hash_table() : basic_hash_table() { } ;
 			hash_table(size_type capasity) : basic_hash_table(capasity) { }
-			hash_table(iterator begin, iterator end) : basic_hash_table(begin, end) { }
-			hash_table(basic_hash_table & _other) : basic_hash_table(_other) { }
-			hash_table(basic_hash_table && _other) : basic_hash_table(_other) { }
+		//	hash_table(iterator begin, iterator end) : basic_hash_table(begin, end) { }
+			hash_table(const hash_table & _other) : basic_hash_table(_other) {
+				insert(_other.begin(), _other.end()); 
+			}
+			hash_table(hash_table && _other) : basic_hash_table(_other) { }
 
 		protected:
 			
@@ -582,27 +547,29 @@ namespace shti {
 			using base_table::node_type;
 			using base_table::data;
 
-			void valid_key(key_type & key, size_type index) {
+			void valid_key(const key_type & key, size_type index) {
 				node_type* result = data[index];
 				while (result) {
-					if (result->key == key) {
-						throw error_type::key_is_used;
+					if (result->data.first == key) {
+						//throw error_type::key_is_used;
+						return false;
 					}
 					result = result->next;
 				}
+				return true;
 			}
 
 	};
 
 	// хеш таблица допускающая хранение значений под одинаковыми ключами
 	template< typename key_type,
-		typename value_type,
+		typename T,
 		typename hash_f = std::hash<key_type>,
-		typename allocator = std::allocator<std::pair<key_type, value_type>>,
+		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t>
-		class hash_multitable : protected basic_hash_table<key_type, value_type, hash_f, allocator, size_type> {
+		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, allocator, size_type> {
 
-		using base_table = basic_hash_table<key_type, value_type, hash_f, allocator, size_type>;
+		using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type>;
 
 		public:
 			using base_table::begin;
@@ -627,15 +594,18 @@ namespace shti {
 
 			using base_table::_iterator;
 
-			using iterator = _iterator<key_type, value_type, basic_hash_table, false>;
-			using const_iterator = _iterator<key_type, value_type, basic_hash_table, true>;
+			using iterator = _iterator<basic_hash_table, false>;
+			using const_iterator = _iterator<basic_hash_table, true>;
 
 			// конструктор класса
 			hash_multitable() : basic_hash_table() { };
 			hash_multitable(size_type capasity) : basic_hash_table(capasity) { }
-			hash_multitable(iterator begin, iterator end) : basic_hash_table(begin, end) { }
-			hash_multitable(basic_hash_table & _other) : basic_hash_table(_other) { }
-			hash_multitable(basic_hash_table && _other) : basic_hash_table(_other) { }
+		//	hash_multitable(iterator begin, iterator end) : basic_hash_table(begin, end) { }
+			hash_multitable(const hash_multitable & _other) :
+				basic_hash_table(_other) { 
+				insert(_other.begin(), _other.end()); 
+			}
+			hash_multitable(hash_multitable && _other) : basic_hash_table(std::move(_other)) { }
 
 		protected:
 
@@ -643,13 +613,13 @@ namespace shti {
 			using base_table::node_type;
 			using base_table::data;
 
-			void valid_key(key_type & key, size_type index) {
+			bool valid_key(const key_type & key, size_type index) {
 				node_type* result = data[index];
 				while (result) {
 					result = result->next;
 				}
+				return true;
 			}
-
 	};
 
 };
