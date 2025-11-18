@@ -2,7 +2,7 @@
 #define __SHTI__
 
 #define CAPACITY 8
-#define REHASH_COEF 0.5
+#define REHASH_COEF 0.8
 #define SIZE_INC_MULTIPLIER 1.5
 
 namespace shti {
@@ -101,10 +101,13 @@ namespace shti {
 
 			// выполн€ет поиск следующей инициализированной €чейки
 			void find_next_init_node() {
+				if (!_owner) {
+					return;
+				}
 				while (_owner->data[_index] == nullptr && _index < _owner->_capacity) {
 					_index++; // пока не встретим инициализированую €чейку
 				};
-				cur_node = _owner->data[_index];
+				cur_node = (_index < _owner->_capacity) ? _owner->data[_index] : nullptr;
 			}
 
 		public:
@@ -231,8 +234,8 @@ namespace shti {
 		}
 		template<typename iter_t>
 		void insert(iter_t begin, iter_t end) {
-			for (; begin != end; ++begin) {
-				emplace(begin->first, begin->second); // добавл€ем элементы из списка
+			for (auto it = begin; it != end; ++it) {
+				insert(*it); // добавл€ем элементы из списка
 			}
 		}
 		iterator insert(std::initializer_list<value_pair> data_list) {
@@ -380,7 +383,7 @@ namespace shti {
 			if (new_size == _capacity) {
 				return;
 			}
-			size_type last_capacity = _capacity; 
+			size_type last_capacity = _capacity;
 			_capacity = new_size;
 			node_type ** temp_data = allocate_nodes(new_size);
 			std::swap(data, temp_data); // мен€ем местами области пам€ти
@@ -398,27 +401,6 @@ namespace shti {
 			}
 			deallocate_nodes(temp_data, last_capacity);
 		}
-
-		//// реализаци€ ставки элементов в таблицу !!!!
-		//template <typename _key, typename _value>
-		//std::pair<iterator, bool> emplace_implementation(_key && key, _value && value) {
-		//	if (_size + 1 > int(rehash_coef * _capacity)) {
-		//		rehash(_capacity * size_multiplier);
-		//	}
-		//	size_type index = key_to_index(key); // получаем индекс
-		//	valid_key(key, index);
-		//	_size++;
-		//	node_type * new_node = n_alloc.allocate(1);
-		//	try {
-		//		n_alloc.construct(new_node, std::forward<_key>(key), std::forward<_value>(value), std::move(data[index]));
-		//	}
-		//	catch (...) {
-		//		n_alloc.deallocate(new_node, 1);
-		//		throw error_type::value_type_construct_error;
-		//	}
-		//	data[index] = new_node;
-		//	return{ iterator(this, new_node, index), true }; // возвращаем итератор на вставленный элемент
-		//}
 
 		// реализаци€ поиска элемента
 		template <typename _key>
@@ -536,10 +518,11 @@ namespace shti {
 			hash_table() : basic_hash_table() { } ;
 			hash_table(size_type capasity) : basic_hash_table(capasity) { }
 		//	hash_table(iterator begin, iterator end) : basic_hash_table(begin, end) { }
-			hash_table(const hash_table & _other) : basic_hash_table(_other) {
+			hash_table(const hash_table & _other) : 
+				basic_hash_table(_other) {
 				insert(_other.begin(), _other.end()); 
 			}
-			hash_table(hash_table && _other) : basic_hash_table(_other) { }
+			hash_table(hash_table && _other) : basic_hash_table(std::move(_other)) { }
 
 		protected:
 			

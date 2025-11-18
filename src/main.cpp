@@ -18,25 +18,31 @@ int main() {
 	};
 	shti::hash_multitable<int, int, int_hash> ht;
 
-	std::cout << "test ===> " << "insert(const value_pair & value) <===\n";
+	std::cout << "test ===> " << "insert(const value_pair &) <===\n";
 
 	ht.insert({ 21231 , 123123214 });
 
 	std::cout << "passed\n";
 
-	std::cout << "test ===> " << "emplace(K && _key, V && _value) <===\n";
+	std::cout << "test ===> " << "emplace(K, V) <===\n";
 
 	ht.emplace( 4123123 , 1231234 );
 
 	std::cout << "passed\n";
 
-	std::cout << "test ===> " << "insert(iter_t begin, iter_t end) <===\n";
+	std::cout << "test ===> " << "insert(std::initializer_list<value_pair>) <===\n";
 
 	ht.insert({ {4 , 4}, {1,2} , {2,1} , { -1, 2 }, {1, 22}, { 3, 2 } });
 	
 	std::cout << "passed\n";
 
+	std::cout << "test ===> " << "insert(iterator, iterator) <===\n";
 
+	shti::hash_multitable<int, int, int_hash> ht2 = ht;
+
+	ht.insert(ht2.begin(), ht2.end());
+
+	std::cout << "passed\n";
 
 //	const shti::hash_multitable<int, int, int_hash> gh(std::move(ht));
 //	/*for (auto it = ht.begin(); it < ht.end) {
