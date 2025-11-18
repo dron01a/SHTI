@@ -268,33 +268,45 @@ namespace shti {
 
 		// выполн€ет поиск элемента в таблице по ключу
 		iterator find(const key_type &key) {
-			return find_implementation(key); 
+			size_type index = key_to_index(key); // получаем индекс элемента
+			node_type * cur_node = data[index];
+			while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
+				if (cur_node->data.first == key) {
+					return iterator(this, cur_node, index);
+				}
+				cur_node = cur_node->next;
+			}
+			return end();
 		}
 		const_iterator find(const key_type &key) const {
-			return find_implementation(key);
+			 return const_cast<basic_hash_table *>(this)->find(key);
 		}
 
 		// оператор выдачи по индексу
 		T & operator[](const key_type &key) {
-			return find_implementation(key)->value;
+			return find(key)->second;
 		}
 
 		// выдает элемент, но с проверкой
 		T & at(const key_type & key) {
-			return at_implementation(key);
+			iterator res = find(key);
+			if (res == end()) {
+				throw shti::error_type::out_of_range;
+			}
+			return res->second;
 		}
 		const T & at(const key_type & key) const {
-			return at_implementation(key);
+			return const_cast<basic_hash_table *>(this)->at(key);
 		}
 
 		// методы дл€ удалени€ элементов
 		size_type erase(const key_type & key) {
 			size_type result = 0;
-			auto it = find_implementation(key);
+			auto it = find(key);
 			while (it != end()) {
 				erase_implementation(it);
 				result++;
-				it = find_implementation(key);
+				it = find(key);
 			}
 			return result;
 		}
@@ -375,7 +387,7 @@ namespace shti {
 		}
 
 	protected:
-		// вовзвращает свободную €чейку дл€ записи
+		// возвращает true если можно выполнить вставку
 		virtual bool valid_key(const key_type & key, size_type index) = 0;
 		
 		// перераспределение элементов в таблице
@@ -402,28 +414,28 @@ namespace shti {
 			deallocate_nodes(temp_data, last_capacity);
 		}
 
-		// реализаци€ поиска элемента
-		template <typename _key>
-		iterator find_implementation(const _key & key) {
-			size_type index = key_to_index(key); // получаем индекс элемента
-			node_type * cur_node = data[index];
-			while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
-				if (cur_node->data.first == key) {
-					return iterator(this, cur_node, index);
-				}
-				cur_node = cur_node->next;
-			}
-			return end();
-		}
-		template <typename _key> 
-		const_iterator find_implementation(const _key & key) const { 
-			return const_cast<basic_hash_table *>(this)->find_implementation(key);
-		}
+		//// реализаци€ поиска элемента
+		//template <typename _key>
+		//iterator find_implementation(const _key & key) {
+		//	size_type index = key_to_index(key); // получаем индекс элемента
+		//	node_type * cur_node = data[index];
+		//	while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
+		//		if (cur_node->data.first == key) {
+		//			return iterator(this, cur_node, index);
+		//		}
+		//		cur_node = cur_node->next;
+		//	}
+		//	return end();
+		//}
+		//template <typename _key> 
+		//const_iterator find_implementation(const _key & key) const { 
+		//	return const_cast<basic_hash_table *>(this)->find_implementation(key);
+		//}
 
 		// реализаци€ выдачи по индексу
-		template <typename _key>
+		/*template <typename _key>
 		T & at_implementation(const _key & key) {
-			iterator res = find_implementation(key);
+			iterator res = find(key);
 			if (res == end()) {
 				throw shti::error_type::out_of_range;
 			}
@@ -432,7 +444,7 @@ namespace shti {
 		template <typename _key>
 		const T & at_implementation(const _key & key) const {
 			return const_cast<basic_hash_table*>(this)->at_implementation(key);
-		}
+		}*/
 
 		// реализаци€ удалени€ элементов
 		iterator erase_implementation(iterator itr) {
@@ -493,6 +505,7 @@ namespace shti {
 			using base_table::end;
 			using base_table::cbegin;
 			using base_table::cend;
+			using base_table::find;
 			using base_table::insert;
 			using base_table::emplace;
 			using base_table::erase;
@@ -559,6 +572,7 @@ namespace shti {
 			using base_table::end;
 			using base_table::cbegin;
 			using base_table::cend;
+			using base_table::find;
 			using base_table::insert;
 			using base_table::emplace;
 			using base_table::erase;

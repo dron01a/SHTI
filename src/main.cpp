@@ -44,22 +44,16 @@ int main() {
 
 	std::cout << "passed\n";
 
-//	const shti::hash_multitable<int, int, int_hash> gh(std::move(ht));
-//	/*for (auto it = ht.begin(); it < ht.end) {
-//
-//	}
-//*/
-//	//shti::hash_table<int, int, int_hash> gh(std::move(ht));
-//	//shti::hash_table<int, int, int_hash>::iterator it1 = gh.find(1);
-//	//shti::hash_table<int, int, int_hash>::iterator it2 = gh.find(2);
-//	//auto res = gh.end();
-//	//gh.insert(ht.begin(), ht.end());
-//	for (auto it = gh.begin(); it != gh.end(); ++it ) {
-//		std::cout << it->first << " " << it->second << std::endl;
-//	}
-	//for (auto it = tested_data_count.begin(); it != tested_data_count.end(); it++) {
-	//	insert_erase_test_int_int(it->first, it->second);
-	//}
-	//ht_test_erase(2500000);
+	std::cout << "test ===> " << "find(const key_type &) <===\n";
+	{
+		auto finded = ht.find(1);
+	}
+	std::cout << "passed\n";
+
+	std::cout << "test ===> " << " at(const key_type &) <===\n";
+	{
+		auto finded = ht.at(1);
+	}
+	std::cout << "passed\n";
 	return 0;
 }
