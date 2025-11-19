@@ -605,10 +605,6 @@ namespace shti {
 			using base_table::data;
 
 			bool valid_key(const key_type & key, size_type index) {
-				node_type* result = data[index];
-				while (result) {
-					result = result->next;
-				}
 				return true;
 			}
 	};
