@@ -83,6 +83,8 @@ namespace shti {
 		// класс итератора
 		template<typename table_t, bool _const>
 		class _iterator {
+			friend class _iterator<table_t, true>;
+			friend class _iterator<table_t, false>;
 		public:
 			// дл€ совместимости с STL
 			using iterator_category = std::forward_iterator_tag;
@@ -116,7 +118,7 @@ namespace shti {
 			_iterator(table_type * owner, size_type index = 0) : _owner(owner), _index(index) {
 				find_next_init_node();
 			}
-			_iterator(table_type * owner, node_type * _node, size_type pos = 0)
+			_iterator(table_type * owner, node_pointer _node, size_type pos = 0)
 				: _owner(owner), _index(pos), cur_node(_node) {}
 
 			template<bool iter_const, typename = std::enable_if_t<_const || !iter_const>>
@@ -158,9 +160,10 @@ namespace shti {
 				return temp;
 			}
 
-			node_type * get_node() const { return cur_node;  }
+			node_pointer get_node() const { return cur_node;  }
 			table_type * get_table() const { return _owner; }
 			size_type get_index() const { return _index; }
+			bool valid() const { return cur_node != nullptr; }
 		};
 
 		using iterator = _iterator<basic_hash_table, false>;
@@ -302,22 +305,54 @@ namespace shti {
 		// методы дл€ удалени€ элементов
 		size_type erase(const key_type & key) {
 			size_type result = 0;
-			auto it = find(key);
-			while (it != end()) {
-				erase_implementation(it);
-				result++;
-				it = find(key);
+			size_type index = key_to_index(key);
+			node_type * cur = data[index];
+			node_type * perv = nullptr; // предыдущий узел 
+			while (cur) {
+				if (cur->data.first == key) {
+					cur = remove_node(cur, perv, index);
+					result++;
+				}
+				else {
+					perv = cur;
+					cur = cur->next;
+				}
 			}
 			return result;
 		}
-		iterator erase(iterator itr) {
-			return erase_implementation(itr);
-		}
-		iterator erase(iterator begin, iterator end) {	
-			while (begin != end) {
-				begin = erase_implementation(begin);
+		iterator erase(const_iterator itr) {
+			if (itr == end() || itr.get_table() != this || !itr.valid() ) {
+				return end();
 			}
-			return erase_implementation(begin);
+			node_type * cur = data[itr.get_index()]; // текущий
+			node_type * perv = nullptr; // предыдущий узел 
+			while (cur) {
+				if (cur->data.first == itr->first) {
+					cur = remove_node(cur, perv, itr.get_index());
+					if (cur) {
+						return iterator(this, cur, itr.get_index());
+					}
+					else {
+						return iterator(this, itr.get_index() + 1);
+					}
+				}
+				perv = cur;
+				cur = cur->next;
+			}
+			return end();
+		}
+		iterator erase(const_iterator begin, const_iterator end) {	
+			if (begin == end) {
+				return this->end();
+			}
+			if (begin.get_table() != this || end.get_table() != this) {
+				return this->end();
+			}
+			auto cur = begin;
+			while (cur != end) {
+				cur = erase(cur);
+			}
+			return iterator(this, const_cast<node_type *>(end.get_node()), end.get_index());
 		}
 
 		// мен€ет местами с другой таблицей
@@ -390,6 +425,25 @@ namespace shti {
 		// возвращает true если можно выполнить вставку
 		virtual bool valid_key(const key_type & key, size_type index) = 0;
 		
+		// удал€ет конкретный узел 
+		node_type * remove_node(node_type * cur, node_type * perv, size_type index) {
+			node_type * next;
+			node_type * target = cur; // цель дл€ удалени€
+			if (perv == nullptr) {
+				data[index] = cur->next;
+			}
+			else {
+				perv->next = cur->next;
+			}
+			next = cur->next;
+			target->next = nullptr;
+			n_alloc.destroy(target);
+			n_alloc.deallocate(target, 1);
+			target = nullptr;
+			_size--;
+			return next;
+		}
+
 		// перераспределение элементов в таблице
 		void rehash(size_type new_size) {
 			if (new_size == _capacity) {
@@ -412,66 +466,6 @@ namespace shti {
 				}
 			}
 			deallocate_nodes(temp_data, last_capacity);
-		}
-
-		//// реализаци€ поиска элемента
-		//template <typename _key>
-		//iterator find_implementation(const _key & key) {
-		//	size_type index = key_to_index(key); // получаем индекс элемента
-		//	node_type * cur_node = data[index];
-		//	while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
-		//		if (cur_node->data.first == key) {
-		//			return iterator(this, cur_node, index);
-		//		}
-		//		cur_node = cur_node->next;
-		//	}
-		//	return end();
-		//}
-		//template <typename _key> 
-		//const_iterator find_implementation(const _key & key) const { 
-		//	return const_cast<basic_hash_table *>(this)->find_implementation(key);
-		//}
-
-		// реализаци€ выдачи по индексу
-		/*template <typename _key>
-		T & at_implementation(const _key & key) {
-			iterator res = find(key);
-			if (res == end()) {
-				throw shti::error_type::out_of_range;
-			}
-			return res->value;
-		}
-		template <typename _key>
-		const T & at_implementation(const _key & key) const {
-			return const_cast<basic_hash_table*>(this)->at_implementation(key);
-		}*/
-
-		// реализаци€ удалени€ элементов
-		iterator erase_implementation(iterator itr) {
-			if (itr == end()) {
-				return end();
-			}
-			node_type * cur = data[itr.get_index()]; // текущий
-			node_type * perv = nullptr; // предыдущий узел 
-			while (cur) {
-				if (cur->data.first == itr->first) {
-					_size--;
-					if (perv == nullptr) {
-						data[itr.get_index()] = cur->next;
-					}
-					else {
-						perv->next = cur->next;
-					}
-					++itr;
-					cur->next = nullptr; 
-					n_alloc.destroy(cur);
-					n_alloc.deallocate(cur, 1);
-					return itr;
-				}
-				perv = cur; 
-				cur = cur->next;
-			}
-			return end();
 		}
 
 		// переход от ключа к индексу
