@@ -21,8 +21,12 @@ void print_ht(shti::hash_multitable<int, int, int_hash> & ht) {
 	}
 }
 
+void m() {
+
+}
+
 int main() {
-	
+
 	shti::hash_multitable<int, int, int_hash> ht;
 
 	std::cout << "test ===> " << "insert(const value_pair &) <===\n";
@@ -33,14 +37,14 @@ int main() {
 
 	std::cout << "test ===> " << "emplace(K, V) <===\n";
 
-	ht.emplace( 4123123 , 1231234 );
+	ht.emplace(4123123, 1231234);
 
 	std::cout << "passed\n";
 
 	std::cout << "test ===> " << "insert(std::initializer_list<value_pair>) <===\n";
 
-	ht.insert({ {4 , 4},  {2,1} , { -1, 2 }, { 1, 1 }, { 1,2 } ,{ 3, 2 }, { -1, 5 }, { 1, 22 } });
-	
+	ht.insert({ { 4 , 4 },{ 2,1 } ,{ -1, 2 },{ 1, 1 },{ 1,2 } ,{ 3, 2 },{ -1, 5 },{ 1, 22 } });
+
 	std::cout << "passed\n";
 
 	std::cout << "test ===> " << "insert(iterator, iterator) <===\n";
