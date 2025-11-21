@@ -90,5 +90,12 @@ int main() {
 		print_ht(ht1);
 	}
 	std::cout << "passed\n";
+
+	shti::hash_table<int, int, int_hash, std::allocator<std::pair<int, int>>, size_t, shti::rehash_policy::prime_rehash_policy<size_t>> ph;
+
+	for (size_t i = 0; i < 1000000; i++) {
+		ph.insert({i, i});
+	}
+
 	return 0;
 }

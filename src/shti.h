@@ -17,9 +17,9 @@ namespace shti {
 		class base_rehash_policy {
 		public:
 			// возвращает новый размер 
-			virtual size_type get_next_size(size_type requested, size_type capacity) = 0;
+			virtual size_type get_next_size(size_type requested, size_type capacity) const = 0;
 			// проверяет необходимость изменения размера
-			bool check_currient_size(size_type items_count, size_type capacity, float load_factor) {
+			bool check_currient_size(size_type items_count, size_type capacity, float load_factor) const {
 				return items_count > capacity * load_factor;
 			}
 			virtual ~base_rehash_policy() = default;
@@ -30,7 +30,7 @@ namespace shti {
 		class default_rehash_policy : public base_rehash_policy<size_type> {
 		public:
 			// возвращает новый размер 
-			size_type get_next_size(size_type requested, size_type capacity) {
+			size_type get_next_size(size_type requested, size_type capacity) const {
 				return std::max(requested, capacity * 2);
 			}
 		};
@@ -40,34 +40,44 @@ namespace shti {
 		class prime_rehash_policy : public base_rehash_policy<size_type> {
 		private:
 
-			static constexpr size_table[]{
-				13ul, 17ul, 19ul, 23ul, 29ul, 31ul, 37ul, 43ul, 53ul, 61ul, 71ul, 79ul,
-				83ul, 103ul, 113ul, 137ul, 139ul, 149ul, 157ul, 179ul, 199ul, 227ul, 241ul, 257ul,
-				277ul, 293ul, 313ul, 359ul, 383ul,467ul, 541ul, 619ul, 709ul, 761ul, 823ul, 887ul,
-				953ul, 1031ul, 1109ul, 1289ul, 1493ul, 1613ul, 1741ul, 2029ul, 2357ul, 2549ul, 2971ul,
-				3209ul, 3469ul, 3739ul, 4027ul, 4349ul, 4703ul, 5087ul, 5503ul, 5953ul, 6427ul, 6949ul,
-				7517ul, 8123ul,8783ul, 9497ul, 10273ul, 11113ul 12983ul, 15173ul, 16411ul, 17749ul,
-				19183ul, 20753ul, 22447ul, 24281ul, 26267ul, 28411ul, 30727ul, 33223ul, 38873ul, 45481ul, 
-				49201ul, 53201ul, 57557ul, 62233ul, 67307ul, 72817ul, 78779ul, 85229ul, 92203ul,
-				99733ul, 116731ul, 136607ul, 147793ul, 159871ul, 172933ul, 187091ul,, 218971ul, 236897ul,
-				256279ul, 299951ul,324503ul, 351061ul, 379787ul, 410857ul, 444487ul, 480881ul, 562841ul, 608903ul,
-				658753ul, 771049ul, 834181ul, 902483ul, 976369ul, 1056323ul, 1142821ul, 1236397ul, 1337629ul, 1447153ul, 1565659ul,
-				1693859ul, 1982627ul, 2320627ul, 2510653ul, 2716249ul, 2938679ul, 3179303ul, 3439651ul, 3721303ul, 4026031ul,
-				4355707ul, 5098259ul,, 5967347ul, 6456007ul, 6984629ul, 7556579ul, 8175383ul, 8844859ul, 9569143ul, 10352717ul,
-				11200489ul, 13109983ul, 15345007ul, 16601593ul, 17961079ul, 19431899ul, 21023161ul, 22744717ul,
-				24607243ul, 28802401ul, 33712729ul, 36473443ul, 39460231ul, 42691603ul, 46187573ul, 49969847ul,
-				54061849ul, 63278561ul, 74066549ul, 80131819ul, 86693767ul, 93793069ul, 101473717ul, 109783337ul,
-				118773397ul, 139022417ul, 162723577ul, 176048909ul, 190465427ul, 206062531ul, 222936881ul, 241193053ul,
-				260944219ul, 305431229ul, 357502601ul, 386778277ul, 418451333ul, 452718089ul, 489790921ul, 529899637ul,
-				573292817ul, 671030513ul, 785430967ul, 849749479ul, 919334987ul, 994618837ul, 1076067617ul, 1164186217ul,
-				1259520799ul, 1362662261ul, 1474249943ul, 1594975441ul, 1725587117ul, 1866894511ul, 2019773507ul, 2185171673ul,
-				2364114217ul, 2557710269ul, 2767159799ul, 2993761039ul, 3238918481ul, 3504151727ul, 3791104843ul, 4101556399ul,
-				4294967291ul
+			static constexpr size_type size_table[] {
+				17ul, 19ul, 23ul, 29ul, 31ul, 37ul, 43ul, 53ul, 
+				61ul, 71ul, 79ul, 83ul, 103ul, 113ul, 137ul, 139ul,
+				149ul, 157ul, 179ul, 199ul, 227ul, 241ul, 257ul, 277ul,
+				293ul, 313ul, 359ul, 383ul, 467ul, 541ul, 619ul, 709ul,
+				761ul, 823ul, 887ul, 953ul, 1031ul, 1109ul, 1289ul, 1493ul,
+				1613ul, 1741ul, 2029ul, 2357ul, 2549ul, 2971ul, 3209ul, 
+				3469ul, 3739ul, 4027ul, 4349ul, 4703ul, 5087ul, 5503ul, 
+				5953ul, 6427ul, 6949ul, 8123ul, 8783ul, 9497ul, 10273ul,
+				11113ul, 12983ul, 15173ul, 16411ul, 17749ul, 19183ul, 
+				20753ul,22447ul, 24281ul, 26267ul, 28411ul, 30727ul, 
+				33223ul, 38873ul, 45481ul, 49201ul, 53201ul, 57557ul, 
+				62233ul, 67307ul, 72817ul, 78779ul, 85229ul, 92203ul, 
+				99733ul, 116731ul, 136607ul, 147793ul, 159871ul, 172933ul, 
+				187091ul, 218971ul, 236897ul, 256279ul, 299951ul,324503ul, 
+				351061ul, 379787ul, 410857ul, 444487ul, 480881ul, 562841ul,
+				608903ul, 658753ul, 771049ul, 834181ul, 902483ul, 976369ul,
+				1056323ul, 1142821ul, 1236397ul, 1337629ul, 1447153ul, 1565659ul, 
+				1693859ul, 1982627ul, 2320627ul, 2510653ul, 2716249ul, 2938679ul, 
+				3179303ul, 3439651ul, 3721303ul, 4026031ul, 4355707ul, 5098259ul, 
+				5967347ul, 6456007ul, 6984629ul, 7556579ul, 8175383ul, 8844859ul, 
+				9569143ul, 10352717ul, 11200489ul, 13109983ul, 15345007ul, 16601593ul, 
+				17961079ul, 19431899ul, 21023161ul, 22744717ul, 24607243ul, 28802401ul, 
+				33712729ul, 36473443ul, 39460231ul, 42691603ul, 46187573ul, 49969847ul,
+				54061849ul, 63278561ul, 74066549ul, 80131819ul, 86693767ul, 93793069ul, 
+				101473717ul, 109783337ul, 118773397ul, 139022417ul, 162723577ul, 176048909ul,
+				190465427ul, 206062531ul, 222936881ul, 241193053ul, 260944219ul, 305431229ul, 
+				357502601ul, 386778277ul, 418451333ul, 452718089ul, 489790921ul, 529899637ul, 
+				573292817ul, 671030513ul, 785430967ul, 849749479ul, 919334987ul, 994618837ul, 
+				1076067617ul, 1164186217ul, 1259520799ul, 1362662261ul, 1474249943ul, 
+				1594975441ul, 1725587117ul, 1866894511ul, 2019773507ul, 2185171673ul, 
+				2364114217ul, 2557710269ul, 2767159799ul, 2993761039ul, 3238918481ul, 
+				3504151727ul, 3791104843ul, 4101556399ul, 4294967291ul,
 			};
 
 		public:
 			// возвращает новый размер 
-			size_type get_next_size(size_type requested, size_type capacity) {
+			size_type get_next_size(size_type requested, size_type capacity) const {
 				for (size_type res : size_table) {
 					if (res > requested) {
 						return res;
@@ -76,7 +86,7 @@ namespace shti {
 				if (requested > std::numeric_limits<size_type>::max() / 2) {
 					return std::numeric_limits<size_type>::max();
 				}
-				return  static_cast<size_type>(requested * 1.5);
+				return static_cast<size_type>(requested * 1.5);
 			}
 		};
 
@@ -85,7 +95,7 @@ namespace shti {
 		class fixed_step_policy : public base_rehash_policy<size_type> {
 		public:
 			// возвращает новый размер 
-			size_type get_next_size(size_type requested, size_type capacity) {
+			size_type get_next_size(size_type requested, size_type capacity) const {
 				size_type new_size = capacity;
 				while (new_size < requested) {
 					if (new_size > std::numeric_limits<size_type>::max() / 2) {
@@ -281,6 +291,11 @@ namespace shti {
 				np_alloc = std::move(_other.np_alloc);
 				n_alloc = std::move(_other.n_alloc);
 			}
+			template<typename rh_policy> 
+			basic_hash_table(rh_policy && _policy) {
+				data = allocate_nodes(_capacity);
+				hash_policy = new rh_policy(_policy);
+			}
 
 			// деструктор класса
 			~basic_hash_table() {
@@ -347,8 +362,6 @@ namespace shti {
 					if (hash_policy->check_currient_size(_size + 1, _capacity, rehash_coef)) {
 						rehash(hash_policy->get_next_size(_size + 1, _capacity));
 					}
-					/*if (_size + 1 > int(rehash_coef * _capacity)) {
-					}*/
 					_size++;
 					node_type * new_node = n_alloc.allocate(1);
 					try {
@@ -516,6 +529,38 @@ namespace shti {
 				return np_alloc;
 			}
 
+			// возращает текущий коэффициент загруженности
+			float load_factor() const{
+				return float(_size / _capacity);
+			}
+
+			// возращает максимальный коэффициент загруженности
+			float max_load_factor() const {
+				return rehash_coef
+			}
+
+			// устанавливает максимальный коэффициент загруженности
+			void max_load_factor(float factor) {
+				if (factor > 1 || factor < 0) {
+					return;
+				}
+				rehash_coef = factor;
+			}
+
+			// возвращает текущюю политику хеширования
+			rehash_policy::base_rehash_policy * get_rehash_policy() const{
+				return hash_policy;
+			}
+
+			// устанавливает политику хеширования
+			template<typename policy>
+			void set_rehash_policy(policy _policy) {
+				if (hash_policy) {
+					delete hash_policy;
+				}
+				hash_policy = new rehash_p(_policy);
+			}
+
 		protected:
 			// возвращает true если можно выполнить вставку
 			virtual bool valid_key(const key_type & key, size_type index) = 0;
@@ -588,7 +633,7 @@ namespace shti {
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type >>
 		class hash_table : protected basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p> {
 
-		using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type>;
+		using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p>;
 
 		public:
 			using base_table::begin;
@@ -655,9 +700,9 @@ namespace shti {
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t,
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type >>
-		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, allocator, size_type> {
+		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p> {
 
-		using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type>;
+		using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p>;
 
 		public:
 			using base_table::begin;
