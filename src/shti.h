@@ -9,7 +9,7 @@ namespace shti {
 		value_type_construct_error,
 	};
 
-	// плитики изменени€ размера таблицы
+	// политики изменени€ размера таблицы
 	namespace rehash_policy {
 
 		// базовый класс дл€ плолитики изменени€ размера таблицы
@@ -112,6 +112,7 @@ namespace shti {
 	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
+		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t, 
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
@@ -382,7 +383,7 @@ namespace shti {
 				size_type index = key_to_index(key); // получаем индекс элемента
 				node_type * cur_node = data[index];
 				while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
-					if (cur_node->data.first == key) {
+					if (comparator(cur_node->data.first, key)) {
 						return iterator(this, cur_node, index);
 					}
 					cur_node = cur_node->next;
@@ -417,7 +418,7 @@ namespace shti {
 				node_type * cur = data[index];
 				node_type * perv = nullptr; // предыдущий узел 
 				while (cur) {
-					if (cur->data.first == key) {
+					if (comparator(cur->data.first, key)) {
 						cur = remove_node(cur, perv, index);
 						result++;
 					}
@@ -503,7 +504,7 @@ namespace shti {
 				}
 				node_type * cur_node = data[index];
 				while (cur_node != nullptr) { // ищем не зан€тую €чейку внутри уже существуещей
-					if (cur_node->key == key) {
+					if (comparator(cur_node->key, key)) {
 						result++;
 					}
 					cur_node = cur_node->next;
@@ -522,6 +523,11 @@ namespace shti {
 			// возвращает хеш функцию
 			hash_f get_hash_func() const {
 				return hasher;
+			}
+
+			// возвращает текущий компаратор
+			comp get_equal() const {
+				return comparator;
 			}
 
 			// ¬озвращает аллокатор
@@ -621,19 +627,20 @@ namespace shti {
 			node_alloc n_alloc;
 			node_pointer_alloc np_alloc;
 			rehash_p * hash_policy;
+			comp comparator; // компаратор
 	};
-
 
 	// хеш таблица
 	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
+		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t,
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type >>
 		class hash_table : protected basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p> {
 
-		using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p>;
+		using base_table = basic_hash_table<key_type, T, comp, hash_f, allocator, size_type, rehash_p>;
 
 		public:
 			using base_table::begin;
@@ -697,12 +704,13 @@ namespace shti {
 	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
+		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t,
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type >>
 		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p> {
 
-		using base_table = basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p>;
+		using base_table = basic_hash_table<key_type, T, comp, hash_f, allocator, size_type, rehash_p>;
 
 		public:
 			using base_table::begin;
