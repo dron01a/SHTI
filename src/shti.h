@@ -127,6 +127,10 @@ namespace shti {
 				// конструктор класса
 				node(key_type _key, T _value, node * _next = nullptr)
 					: data(_key, _value), next(_next) {}
+				node(const node & _node) : data(_node.data), next(_node.next) {}
+				node(node && _node) : data(std::move(_node.data)), next(std::move(_node.next)) {
+					_node.next = nullptr;
+				}
 				node() {}
 
 				// деструктор класса
@@ -160,8 +164,6 @@ namespace shti {
 			using node_type = node<key_type, T>;
 			using node_alloc = typename allocator::template rebind<node_type>::other;
 			using node_pointer_alloc = typename allocator::template rebind<node_type*>::other;
-
-			node_type ** data; // данные
 
 		private:
 			// выделение памяти под узлы таблицы
@@ -277,25 +279,49 @@ namespace shti {
 				hash_policy = new rehash_p();
 				data = allocate_nodes(_capacity);
 			}
-			basic_hash_table(const basic_hash_table & _other) {
-				this->_capacity = _other._capacity;
-				np_alloc = _other.np_alloc;
-				hash_policy = new rehash_p(*_other.hash_policy);
+			basic_hash_table(const basic_hash_table & _other) : 
+				_capacity(_other._capacity) , 
+				_size(_other._size),
+				rehash_coef(_other.rehash_coef),
+				hasher(_other.hasher),
+				np_alloc(_other.np_alloc), 
+				n_alloc(_other.n_alloc),
+				comparator(_other.comparator) {
 				data = allocate_nodes(_capacity);
+				for (size_t i = 0; i < _capacity; ++i) {
+					if (!_other.data[i]) {
+						continue;
+					}
+					node_type * cur = _other.data[i];
+					node_type * new_node = allocate_node(cur->data.first, cur->data.second, nullptr);
+					node_type * last = new_node;
+					cur = cur->next;
+					while (cur){
+						node_type * new_child = allocate_node(cur->data.first, cur->data.second, nullptr);
+						last->next = new_child;
+						last = last->next;
+						cur = cur->next;
+					}
+					data[i] = new_node;
+				}
+				hash_policy = new rehash_p(*_other.hash_policy);
+
 			}
 			basic_hash_table(basic_hash_table && _other) {
+				std::swap(data, _other.data);
 				std::swap(_size, _other._size);
 				std::swap(_capacity, _other._capacity);
-				std::swap(data, _other.data);
+				rehash_coef = std::move(_other.rehash_coef);
 				hasher = std::move(_other.hasher);
-				hash_policy = std::move(_other.hash_policy);
 				np_alloc = std::move(_other.np_alloc);
 				n_alloc = std::move(_other.n_alloc);
-			}
-			template<typename rh_policy> 
-			basic_hash_table(rh_policy && _policy) {
-				data = allocate_nodes(_capacity);
-				hash_policy = new rh_policy(_policy);
+				comparator = std::move(_other.comparator);
+				if (hash_policy != nullptr) {
+					delete hash_policy;
+				}
+				hash_policy = std::move(_other.hash_policy);
+				_other._size = 0;
+				_other._capacity = 8;
 			}
 
 			// деструктор класса
@@ -307,22 +333,30 @@ namespace shti {
 
 			// операторы присвоения 
 			basic_hash_table & operator=(const basic_hash_table & table) {
-				if (this != table) {
+				if (this != &table) {
 					basic_hash_table temp(table);
 					swap(temp);
 				}
 				return *this;
 			}
-			basic_hash_table & operator=(const basic_hash_table && _other) {
-				if (this != _other) {
+			basic_hash_table & operator=(basic_hash_table && _other) {
+				if (this != &_other) {
 					clear();
 					deallocate_nodes(data, _capacity);
-					std::swap(_size, _other._size);
-					std::swap(_capacity, _other._capacity);
 					std::swap(data, _other.data);
+					std::swap(_capacity, _other._capacity);
+					std::swap(_size, _other._size);
+					rehash_coef = _other.rehash_coef;
 					hasher = std::move(_other.hasher);
 					np_alloc = std::move(_other.np_alloc);
 					n_alloc = std::move(_other.n_alloc);
+					comparator = std::move(_other.comparator);
+					if (hash_policy != nullptr) {
+						delete hash_policy;
+					}
+					hash_policy = std::move(_other.hash_policy);
+					_other._size = 0;
+					_other._capacity = 8;
 				}
 				return *this;
 			}
@@ -333,9 +367,9 @@ namespace shti {
 			const_iterator cbegin() const noexcept { return const_iterator(this); }
 
 			// итераторы указывающие на конец
-			iterator end() noexcept { return iterator(this, _capacity - 1); }
-			const_iterator end() const noexcept { return const_iterator(this, _capacity - 1); }
-			const_iterator cend() const noexcept { return const_iterator(this, _capacity - 1); }
+			iterator end() noexcept { return iterator(this, _capacity); }
+			const_iterator end() const noexcept { return const_iterator(this, _capacity); }
+			const_iterator cend() const noexcept { return const_iterator(this, _capacity); }
 
 			// выполняет вставку элемента в таблицу
 			std::pair<iterator, bool> insert(const value_pair & value) {
@@ -364,14 +398,7 @@ namespace shti {
 						rehash(hash_policy->get_next_size(_size + 1, _capacity));
 					}
 					_size++;
-					node_type * new_node = n_alloc.allocate(1);
-					try {
-						n_alloc.construct(new_node, _key, _value, std::move(data[index]));
-					}
-					catch (...) {
-						n_alloc.deallocate(new_node, 1);
-						throw error_type::value_type_construct_error;
-					}
+					node_type * new_node = allocate_node(_key, _value, std::move(data[index]));
 					data[index] = new_node;
 					return{ iterator(this, new_node, index), true }; // возвращаем итератор на вставленный элемент
 				}
@@ -396,7 +423,7 @@ namespace shti {
 
 			// оператор выдачи по индексу
 			T & operator[](const key_type &key) {
-				return find(key)->second;
+				return emplace(key, T()).first->second;  //find(key)->second;
 			}
 
 			// выдает элемент, но с проверкой
@@ -472,6 +499,8 @@ namespace shti {
 				std::swap(hasher, ht.hasher);
 				std::swap(np_alloc, ht.np_alloc);
 				std::swap(n_alloc, ht.n_alloc);
+				std::swap(hash_policy, ht.hash_policy);
+				std::swap(comparator, ht.comparator);
 			}
 
 			// возвращает колличество элементов
@@ -554,7 +583,7 @@ namespace shti {
 			}
 
 			// возвращает текущюю политику хеширования
-			rehash_policy::base_rehash_policy * get_rehash_policy() const{
+			rehash_policy::base_rehash_policy<size_type> * get_rehash_policy() const{
 				return hash_policy;
 			}
 
@@ -570,6 +599,19 @@ namespace shti {
 		protected:
 			// возвращает true если можно выполнить вставку
 			virtual bool valid_key(const key_type & key, size_type index) = 0;
+		
+			// размещает узел
+			template <typename K, typename V, typename P>
+			node_type * allocate_node(K && key, V && val, P && next) {
+				node_type * dest = n_alloc.allocate(1);
+				try {
+					n_alloc.construct(dest, key, val, next);
+				}
+				catch (...) {
+					n_alloc.deallocate(dest, 1);
+					throw error_type::value_type_construct_error;
+				}
+			}
 
 			// удаляет конкретный узел 
 			node_type * remove_node(node_type * cur, node_type * perv, size_type index) {
@@ -620,6 +662,7 @@ namespace shti {
 				return hasher(key) % _capacity;
 			}
 
+			node_type ** data; // данные
 			size_type _capacity = 4; // размер таблицы
 			size_type _size = 0; // текущее число элементов
 			float rehash_coef = 0.8; // коэфициент при котором размер таблицы будет меняться
@@ -630,17 +673,18 @@ namespace shti {
 			comp comparator; // компаратор
 	};
 
+
 	// хеш таблица
-	template< typename key_type,
+	template<  typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
 		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t,
-		typename rehash_p = rehash_policy::default_rehash_policy<size_type >>
-		class hash_table : protected basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p> {
+		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
+		class hash_table : protected basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p> {
 
-		using base_table = basic_hash_table<key_type, T, comp, hash_f, allocator, size_type, rehash_p>;
+		using base_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p>;
 
 		public:
 			using base_table::begin;
@@ -675,11 +719,21 @@ namespace shti {
 			//	hash_table(iterator begin, iterator end) : basic_hash_table(begin, end) { }
 			hash_table(const hash_table & _other) :
 				basic_hash_table(_other) {
-				insert(_other.begin(), _other.end());
+				//insert(_other.begin(), _other.end());
 			}
 			hash_table(hash_table && _other) : basic_hash_table(std::move(_other)) { }
 
 			~hash_table(){}
+
+			// операторы присваивания
+			hash_table & operator=(const hash_table & other) {
+				base_table::operator=(other);
+				return *this;
+			}
+			hash_table & operator=(hash_table && other) {
+				base_table::operator=(std::move(other));
+				return *this;
+			}
 
 		protected:
 
@@ -701,16 +755,16 @@ namespace shti {
 	};
 
 	// хеш таблица допускающая хранение значений под одинаковыми ключами
-	template< typename key_type,
+	template<  typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
 		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t,
-		typename rehash_p = rehash_policy::default_rehash_policy<size_type >>
-		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, allocator, size_type, rehash_p> {
+		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
+		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p> {
 
-		using base_table = basic_hash_table<key_type, T, comp, hash_f, allocator, size_type, rehash_p>;
+		using base_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p>;
 
 		public:
 			using base_table::begin;
@@ -745,11 +799,21 @@ namespace shti {
 			//	hash_multitable(iterator begin, iterator end) : basic_hash_table(begin, end) { }
 			hash_multitable(const hash_multitable & _other) :
 				basic_hash_table(_other) {
-				insert(_other.begin(), _other.end());
+			//	insert(_other.begin(), _other.end());
 			}
 			hash_multitable(hash_multitable && _other) : basic_hash_table(std::move(_other)) { }
 
 			~hash_multitable()  {}
+
+			// операторы присваивания
+			hash_multitable & operator=(const hash_multitable & other) {
+				base_table::operator=(other);
+				return *this;
+			}
+			hash_multitable & operator=(hash_multitable && other) {
+				base_table::operator=(std::move(other));
+				return *this;
+			}
 
 		protected:
 
