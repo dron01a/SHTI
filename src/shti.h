@@ -1,6 +1,9 @@
 #ifndef __SHTI__
 #define __SHTI__
 
+#include <functional>
+#include <algorithm>
+
 namespace shti {
 
 	enum error_type {
@@ -320,8 +323,10 @@ namespace shti {
 					delete hash_policy;
 				}
 				hash_policy = std::move(_other.hash_policy);
+				_other.hash_policy = nullptr;
+				_other.data = nullptr;
 				_other._size = 0;
-				_other._capacity = 8;
+				_other._capacity = 0;
 			}
 
 			// деструктор класса
@@ -332,10 +337,38 @@ namespace shti {
 			}
 
 			// операторы присвоения 
-			basic_hash_table & operator=(const basic_hash_table & table) {
-				if (this != &table) {
-					basic_hash_table temp(table);
-					swap(temp);
+			basic_hash_table & operator=(const basic_hash_table & _other) {
+				if (this != &_other) {
+					clear();
+					deallocate_nodes(data, _capacity);
+					_capacity = _other._capacity;
+					_size = _other._size;
+					rehash_coef = _other.rehash_coef;
+					hasher = _other.hasher;
+					np_alloc =_other.np_alloc;
+					n_alloc = _other.n_alloc;
+					comparator = _other.comparator;
+					if (hash_policy != nullptr) {
+						delete hash_policy;
+					}
+					data = allocate_nodes(_capacity);
+					for (size_t i = 0; i < _capacity; ++i) {
+						if (!_other.data[i]) {
+							continue;
+						}
+						node_type * cur = _other.data[i];
+						node_type * new_node = allocate_node(cur->data.first, cur->data.second, nullptr);
+						node_type * last = new_node;
+						cur = cur->next;
+						while (cur) {
+							node_type * new_child = allocate_node(cur->data.first, cur->data.second, nullptr);
+							last->next = new_child;
+							last = last->next;
+							cur = cur->next;
+						}
+						data[i] = new_node;
+					}
+					hash_policy = new rehash_p(*_other.hash_policy);
 				}
 				return *this;
 			}
@@ -355,8 +388,10 @@ namespace shti {
 						delete hash_policy;
 					}
 					hash_policy = std::move(_other.hash_policy);
+					_other.hash_policy = nullptr;
+					_other.data = nullptr;
 					_other._size = 0;
-					_other._capacity = 8;
+					_other._capacity = 0;
 				}
 				return *this;
 			}
@@ -611,6 +646,7 @@ namespace shti {
 					n_alloc.deallocate(dest, 1);
 					throw error_type::value_type_construct_error;
 				}
+				return dest;
 			}
 
 			// удаляет конкретный узел 

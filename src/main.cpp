@@ -1,16 +1,6 @@
 #include <iostream>
 #include <string>
-
-#include <vector>
-#include <map>
-#include <unordered_map>
-
-#include <functional>
-#include <chrono>
-#include <algorithm>
-
 #include <cassert>
-
 #include "shti.h"
 
 void basic_operations_test() {
@@ -19,6 +9,9 @@ void basic_operations_test() {
 	table.insert({ 1, "one"});
 	table.insert({ 2, "two" });
 	table.insert({ 3, "three" });
+	for (auto it = table.begin(); it != table.end(); it++) {
+		std::cout << it->first << " " << it->second << std::endl;
+	}
 	assert(table.size() == 3);
 	std::cout << "> insert test complete" << std::endl;
 	auto find_res_1 = table.find(1);
@@ -45,23 +38,18 @@ void basic_operations_test() {
 
 void iterator_test() {
 	std::cout << "=== iterator test begin ===" << std::endl;
-
 	shti::hash_table<int, int> table;
-
 	table.insert({ { 1,1 }, {2,2} , {3,2}, {4,1}, {5,1} });
-
 	int count = 0;
 	for (auto it = table.begin(); it != table.end(); ++it) {
 		count++;
 	}
 	assert(count == 5);
-
 	count = 0;
 	for (const auto& n : table) {
 		count++;
 	}
 	assert(count == 5);
-
 	std::cout << "=== iterator test passed ===" << std::endl << std::endl;
 }
 
@@ -120,10 +108,8 @@ void resize_and_rehash_test() {
 }
 
 void move_test() {
-	std::cout << "=== resize and rehash test begin ===" << std::endl;
-
+	std::cout << "=== move test begin ===" << std::endl;
 	shti::hash_table<int, std::string> original;
-	size_t orig_size = original.capacity();
 	original.insert({ 0, "zero" });
 	original.insert({ 1, "one" });
 	original.insert({ 2, "two" });
@@ -131,25 +117,49 @@ void move_test() {
 	original.insert({ 4, "chetiri" });
 	original.insert({ 5, "piat" });
 	original.insert({ 6, "six" });
+	size_t orig_size = original.capacity();
 	shti::hash_table<int, std::string> moved(std::move(original));
+	assert(moved.capacity() == orig_size);
+	assert(original.capacity() == 0);
 	std::cout << "> move constructor test passed" << std::endl;
 	shti::hash_table<int, std::string> moved2;
 	moved2 = std::move(moved);
+	assert(moved2.capacity() == orig_size);
+	assert(moved.capacity() == 0);
 	std::cout << "> move assign test passed" << std::endl;
 	std::cout << "=== resize and rehash test passed ===" << std::endl << std::endl;
 }
 
 void copy_test() {
-
+	std::cout << "=== copy test begin ===" << std::endl;
+	shti::hash_table<int, std::string> original;
+	original.insert({ 0, "zero" });
+	original.insert({ 1, "one" });
+	original.insert({ 2, "two" });
+	original.insert({ 3, "three" });
+	original.insert({ 4, "chetiri" });
+	original.insert({ 5, "piat" });
+	original.insert({ 6, "six" });
+	size_t orig_size = original.capacity();
+	shti::hash_table<int, std::string> copy(original);
+	assert(copy.capacity() == orig_size);
+	std::cout << "> copy constructor test passed" << std::endl;
+	shti::hash_table<int, std::string> copy2;
+	copy2 = copy;
+	assert(copy2.capacity() == orig_size);
+	assert(copy.capacity() == orig_size);
+	std::cout << "> copy assign test passed" << std::endl;
+	std::cout << "=== resize and rehash test passed ===" << std::endl << std::endl;
 }
 
 int main() {
-	/*std::cout << "=== Test begin ===" << std::endl;
+	std::cout << "=== Test begin ===" << std::endl;
 	try {
 		basic_operations_test();
 		iterator_test();
 		erase_test();
 		resize_and_rehash_test();
+		copy_test();
 		move_test();
 	}
 	catch (shti::error_type err) {
@@ -158,29 +168,6 @@ int main() {
 	catch (...) {
 		std::cerr << "TEST FALLED" << std::endl;
 	}
-	std::cout << "=== Test passed ===" << std::endl;*/
-	shti::hash_table<int, std::string> original;
-	size_t orig_size = original.capacity();
-	original.insert({ 0, "zero" });
-	original.insert({ 1, "one" });
-	original.insert({ 2, "two" });
-	original.insert({ 3, "three" });
-	original.insert({ 4, "chetiri" });
-	original.insert({ 5, "piat" });
-	original.insert({ 6, "six" });
-	original.insert({ 101, "1six" });
-
-	for (auto it = original.begin(); it != original.end(); it++) {
-		std::cout << it->first << " " << it->second << std::endl;
-	}
-	std::cout << "-------\n";
-
-	shti::hash_table<int, std::string> clone(original);
-
-	for (auto it = clone.begin(); it != clone.end(); it++) {
-		std::cout << it->first << " " << it->second << std::endl;
-	}
-
-	std::cout << "-------\n";
+	std::cout << "=== Test passed ===" << std::endl;
 	return 0;
 }
