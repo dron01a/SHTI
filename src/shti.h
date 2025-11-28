@@ -176,6 +176,39 @@ namespace shti {
 				return data;
 			}
 
+			// размещает узел
+			template <typename K, typename V, typename P>
+			node_type * allocate_node(K && key, V && val, P && next) {
+				node_type * dest = n_alloc.allocate(1);
+				try {
+					n_alloc.construct(dest, key, val, next);
+				}
+				catch (...) {
+					n_alloc.deallocate(dest, 1);
+					throw error_type::value_type_construct_error;
+				}
+				return dest;
+			}
+
+			// удаляет конкретный узел 
+			node_type * remove_node(node_type * cur, node_type * perv, size_type index) {
+				node_type * next;
+				node_type * target = cur; // цель для удаления
+				if (perv == nullptr) {
+					data[index] = cur->next;
+				}
+				else {
+					perv->next = cur->next;
+				}
+				next = cur->next;
+				target->next = nullptr;
+				n_alloc.destroy(target);
+				n_alloc.deallocate(target, 1);
+				target = nullptr;
+				_size--;
+				return next;
+			}
+
 			// освобождение памяти 
 			void deallocate_nodes(node_type ** nodes, size_type count) {
 				np_alloc.deallocate(nodes, count);
@@ -456,6 +489,17 @@ namespace shti {
 				return const_cast<basic_hash_table *>(this)->find(key);
 			}
 
+			// выполняет вставку элемента или обновялет значение в зависимости от наличия в таблице
+			template <typename K, typename V>
+			std::pair<iterator, bool> insert_or_assign(K && _key, V && _value) {
+				iterator node = find(_key);
+				if (node != end()) {
+					return emplace(_key, _value);
+				}
+				node->second = _value;
+				return { node, true };
+			}
+
 			// оператор выдачи по индексу
 			T & operator[](const key_type &key) {
 				return emplace(key, T()).first->second;  //find(key)->second;
@@ -634,39 +678,6 @@ namespace shti {
 		protected:
 			// возвращает true если можно выполнить вставку
 			virtual bool valid_key(const key_type & key, size_type index) = 0;
-		
-			// размещает узел
-			template <typename K, typename V, typename P>
-			node_type * allocate_node(K && key, V && val, P && next) {
-				node_type * dest = n_alloc.allocate(1);
-				try {
-					n_alloc.construct(dest, key, val, next);
-				}
-				catch (...) {
-					n_alloc.deallocate(dest, 1);
-					throw error_type::value_type_construct_error;
-				}
-				return dest;
-			}
-
-			// удаляет конкретный узел 
-			node_type * remove_node(node_type * cur, node_type * perv, size_type index) {
-				node_type * next;
-				node_type * target = cur; // цель для удаления
-				if (perv == nullptr) {
-					data[index] = cur->next;
-				}
-				else {
-					perv->next = cur->next;
-				}
-				next = cur->next;
-				target->next = nullptr;
-				n_alloc.destroy(target);
-				n_alloc.deallocate(target, 1);
-				target = nullptr;
-				_size--;
-				return next;
-			}
 
 			// перераспределение элементов в таблице
 			void rehash(size_type new_size) {
@@ -719,6 +730,21 @@ namespace shti {
 		typename size_type = std::size_t,
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
 		class hash_table : protected basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p> {
+
+		friend bool operator==(const hash_table & ht1, const hash_table & ht2) {
+			if (ht1.size() != ht2.size()) {
+				return false;
+			}
+			for (auto it1 = ht1.begin(), it2 = ht2.begin(); it1 != ht1.end(); ++it1, ++it2) {
+				if (it1->first != it2->first || it1->second != it2->second) {
+					return false;
+				}
+			}
+			return true;
+		}
+		friend bool operator!=(const hash_table & ht1, const hash_table & ht2) {
+			return !(ht1==ht2);
+		}
 
 		using base_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p>;
 
@@ -799,6 +825,21 @@ namespace shti {
 		typename size_type = std::size_t,
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
 		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p> {
+
+		friend bool operator==(const hash_table & ht1, const hash_table & ht2) {
+			if (ht1.size() != ht2.size()) {
+				return false;
+			}
+			for (auto it1 = ht1.begin(), it2 = ht2.begin(); it1 != ht1.end(); ++it1, ++it2) {
+				if (it1->first != it2->first || it1->second != it2->second) {
+					return false;
+				}
+			}
+			return true;
+		}
+		friend bool operator!=(const hash_table & ht1, const hash_table & ht2) {
+			return !(ht1 == ht2);
+		}
 
 		using base_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p>;
 

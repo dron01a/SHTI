@@ -9,9 +9,6 @@ void basic_operations_test() {
 	table.insert({ 1, "one"});
 	table.insert({ 2, "two" });
 	table.insert({ 3, "three" });
-	for (auto it = table.begin(); it != table.end(); it++) {
-		std::cout << it->first << " " << it->second << std::endl;
-	}
 	assert(table.size() == 3);
 	std::cout << "> insert test complete" << std::endl;
 	auto find_res_1 = table.find(1);
@@ -152,6 +149,26 @@ void copy_test() {
 	std::cout << "=== resize and rehash test passed ===" << std::endl << std::endl;
 }
 
+void cmp_operatros_test() {
+	std::cout << "=== compare operators test begin ===" << std::endl;
+	shti::hash_table<int, std::string> original;
+	original.insert({ 0, "zero" });
+	original.insert({ 1, "one" });
+	original.insert({ 2, "two" });
+	original.insert({ 3, "three" });
+	original.insert({ 4, "chetiri" });
+	original.insert({ 5, "piat" });
+	original.insert({ 6, "six" });
+	shti::hash_table<int, std::string> copy(original);
+	assert(copy == original);
+	std::cout << "> == test passed" << std::endl;
+	copy.erase(5);
+	copy.erase(6);
+	assert(copy != original);
+	std::cout << "> != test passed" << std::endl;
+	std::cout << "=== compare operators test passed ===" << std::endl << std::endl;
+}
+
 int main() {
 	std::cout << "=== Test begin ===" << std::endl;
 	try {
@@ -161,6 +178,7 @@ int main() {
 		resize_and_rehash_test();
 		copy_test();
 		move_test();
+		cmp_operatros_test();
 	}
 	catch (shti::error_type err) {
 		std::cerr << "TEST FALLED" << std::endl;
