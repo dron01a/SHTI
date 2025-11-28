@@ -9,9 +9,6 @@ void basic_operations_test() {
 	table.insert({ 1, "one" });
 	table.insert({ 2, "two" });
 	table.insert({ 3, "three" });
-	for (auto it = table.begin(); it != table.end(); it++) {
-		std::cout << it->first << " " << it->second << std::endl;
-	}
 	assert(table.size() == 3);
 	std::cout << "> insert test complete" << std::endl;
 	auto find_res_1 = table.find(1);
@@ -51,6 +48,37 @@ void iterator_test() {
 	}
 	assert(count == 5);
 	std::cout << "=== iterator test passed ===" << std::endl << std::endl;
+}
+
+void insert_test() {
+	std::cout << "=== insert test begin ===" << std::endl;
+	shti::hash_table<int, std::string> table;
+	table.insert({ 1, "one" });
+	table.insert({ 2, "two" });
+	table.insert({ 3, "three" });
+	table.insert({ 4, "chetiri" });
+	auto res_ins_1 = table.insert({ 1, "2" });
+	assert(res_ins_1.second == false);
+	std::cout << "> insert(value_pair) passed" << std::endl;
+	auto res_ins_or_ass = table.insert_or_assign({ 1 , "2" });
+	assert(res_ins_or_ass.second != false);
+	assert(table.find(1)->second == "2");
+	std::cout << "> insert_or_assign passed" << std::endl;
+	table.insert({ { 5, "3" },{ 6, "6" },{ 7, "45" } });
+	assert(table.size() == 7);
+	assert(table.find(5) != table.end());
+	assert(table.find(6) != table.end());
+	assert(table.find(7) != table.end());
+	std::cout << "> insert(std::initializer_list<value_pair>) passed" << std::endl;
+	shti::hash_table<int, std::string> table2;
+	table2.insert({ 145, "one" });
+	table2.insert({ 278, "two" });
+	table.insert(table2.begin(), table2.end());
+	assert(table.size() == 9);
+	assert(table.find(145) != table.end());
+	assert(table.find(278) != table.end());
+	std::cout << "> insert from range passed" << std::endl;
+	std::cout << "=== insert test passed ===" << std::endl << std::endl;
 }
 
 void erase_test() {
@@ -127,7 +155,7 @@ void move_test() {
 	assert(moved2.capacity() == orig_size);
 	assert(moved.capacity() == 0);
 	std::cout << "> move assign test passed" << std::endl;
-	std::cout << "=== resize and rehash test passed ===" << std::endl << std::endl;
+	std::cout << "=== move test passed ===" << std::endl << std::endl;
 }
 
 void copy_test() {
@@ -149,18 +177,40 @@ void copy_test() {
 	assert(copy2.capacity() == orig_size);
 	assert(copy.capacity() == orig_size);
 	std::cout << "> copy assign test passed" << std::endl;
-	std::cout << "=== resize and rehash test passed ===" << std::endl << std::endl;
+	std::cout << "=== copy test passed ===" << std::endl << std::endl;
+}
+
+void cmp_operatros_test() {
+	std::cout << "=== compare operators test begin ===" << std::endl;
+	shti::hash_table<int, std::string> original;
+	original.insert({ 0, "zero" });
+	original.insert({ 1, "one" });
+	original.insert({ 2, "two" });
+	original.insert({ 3, "three" });
+	original.insert({ 4, "chetiri" });
+	original.insert({ 5, "piat" });
+	original.insert({ 6, "six" });
+	shti::hash_table<int, std::string> copy(original);
+	assert(copy == original);
+	std::cout << "> == test passed" << std::endl;
+	copy.erase(5);
+	copy.erase(6);
+	assert(copy != original);
+	std::cout << "> != test passed" << std::endl;
+	std::cout << "=== compare operators test passed ===" << std::endl << std::endl;
 }
 
 int main() {
-	std::cout << "=== Test begin ===" << std::endl;
+	std::cout << "=== Test begin ===" << std::endl << std::endl;
 	try {
 		basic_operations_test();
 		iterator_test();
+		insert_test();
 		erase_test();
 		resize_and_rehash_test();
 		copy_test();
 		move_test();
+		cmp_operatros_test();
 	}
 	catch (shti::error_type err) {
 		std::cerr << "TEST FALLED" << std::endl;

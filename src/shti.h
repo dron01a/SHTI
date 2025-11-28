@@ -493,11 +493,17 @@ namespace shti {
 			template <typename K, typename V>
 			std::pair<iterator, bool> insert_or_assign(K && _key, V && _value) {
 				iterator node = find(_key);
-				if (node != end()) {
+				if (node == end()) {
 					return emplace(_key, _value);
 				}
 				node->second = _value;
 				return { node, true };
+			}
+			std::pair<iterator, bool> insert_or_assign(const value_pair & value) {
+				return insert_or_assign(value.first, value.second);
+			}
+			std::pair<iterator, bool> insert_or_assign(value_pair && value) {
+				return insert_or_assign(std::move(value.first), std::move(value.second));
 			}
 
 			// оператор выдачи по индексу
@@ -755,6 +761,7 @@ namespace shti {
 			using base_table::cend;
 			using base_table::find;
 			using base_table::insert;
+			using base_table::insert_or_assign;
 			using base_table::emplace;
 			using base_table::erase;
 			using base_table::operator=;
@@ -850,6 +857,7 @@ namespace shti {
 			using base_table::cend;
 			using base_table::find;
 			using base_table::insert;
+			using base_table::insert_or_assign;
 			using base_table::emplace;
 			using base_table::erase;
 			using base_table::operator=;
