@@ -111,6 +111,53 @@ namespace shti {
 		};
 	};
 
+	// политики хранения данных
+	namespace storage_policy {
+
+		// базовая политика хранения данных
+		template <typename K, typename N>
+		class base_storage_policy {
+		public:
+			using key_type = K;
+			using node_type = N;
+
+			// деструктор
+			virtual ~base_storage_policy() = default;
+			
+			// проверка на возможность вставки
+			virtual bool can_insert(node_type* _data, key_type _key) = 0;
+		};
+
+		// политика ханения данных исключающая хранение элементов с одинаковыми ключами
+		template <typename K, typename N>
+		class unique_storage_policy : public base_storage_policy<K,N> {
+			using typename base_storage_policy<K, N>::key_type;
+			using typename base_storage_policy<K, N>::node_type;
+		public:
+			bool can_insert(node_type* _data, key_type _key) override {
+				node_type * result = _data;
+				while (result) {
+					if (result->data.first == _key) {
+						return false;
+					}
+					result = result->next;
+				}
+				return true;
+			}
+		};
+
+		// политика хранения данных разрешающая хранение данных с одинаковыми ключами
+		template <typename K, typename N>
+		class multi_storage_policy : public base_storage_policy<K, N> {
+			using typename base_storage_policy<K, N>::key_type;
+			using typename base_storage_policy<K, N>::node_type;
+		public:
+			bool can_insert(node_type* _data, key_type _key) override {
+				return true;
+			}
+		};
+	};
+
 	// базовый класс хеш таблицы
 	template< typename key_type,
 		typename T,
@@ -118,10 +165,27 @@ namespace shti {
 		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t, 
-		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
+		typename rehash_p = rehash_policy::default_rehash_policy<size_type>, 
+		template <typename, typename> class storage_p = storage_policy::base_storage_policy>
 		class basic_hash_table {
-		using value_pair = std::pair<const key_type, T>;
-		protected:
+			using value_pair = std::pair<const key_type, T>;
+
+			friend bool operator==(const basic_hash_table & ht1, const basic_hash_table & ht2) {
+				if (ht1.size() != ht2.size()) {
+					return false;
+				}
+				for (auto it1 = ht1.begin(), it2 = ht2.begin(); it1 != ht1.end(); ++it1, ++it2) {
+					if (it1->first != it2->first || it1->second != it2->second) {
+						return false;
+					}
+				}
+				return true;
+			}
+			friend bool operator!=(const basic_hash_table & ht1, const basic_hash_table & ht2) {
+				return !(ht1 == ht2);
+			}
+
+		private:
 
 			// класс узла хеш таблицы
 			template<typename key_type, typename T>
@@ -167,8 +231,8 @@ namespace shti {
 			using node_type = node<key_type, T>;
 			using node_alloc = typename allocator::template rebind<node_type>::other;
 			using node_pointer_alloc = typename allocator::template rebind<node_type*>::other;
+			using storage_policy_type = storage_p<key_type, node_type>;
 
-		private:
 			// выделение памяти под узлы таблицы
 			node_type ** allocate_nodes(size_type count) {
 				node_type **data = np_alloc.allocate(count);
@@ -308,11 +372,13 @@ namespace shti {
 			// конструктор класса
 			basic_hash_table() {
 				hash_policy = new rehash_p();
+				_storage_policy = new storage_policy_type();
 				data = allocate_nodes(_capacity);
 			}
 			basic_hash_table(size_type capasity) {
 				this->_capacity = capasity;
 				hash_policy = new rehash_p();
+				_storage_policy = new storage_policy_type();
 				data = allocate_nodes(_capacity);
 			}
 			basic_hash_table(const basic_hash_table & _other) : 
@@ -341,6 +407,7 @@ namespace shti {
 					data[i] = new_node;
 				}
 				hash_policy = new rehash_p(*_other.hash_policy);
+				_storage_policy = new storage_policy_type(*_other._storage_policy);
 
 			}
 			basic_hash_table(basic_hash_table && _other) {
@@ -352,11 +419,10 @@ namespace shti {
 				np_alloc = std::move(_other.np_alloc);
 				n_alloc = std::move(_other.n_alloc);
 				comparator = std::move(_other.comparator);
-				if (hash_policy != nullptr) {
-					delete hash_policy;
-				}
 				hash_policy = std::move(_other.hash_policy);
 				_other.hash_policy = nullptr;
+				_storage_policy = std::move(_other._storage_policy);
+				_other._storage_policy = nullptr;
 				_other.data = nullptr;
 				_other._size = 0;
 				_other._capacity = 0;
@@ -367,6 +433,7 @@ namespace shti {
 				clear();
 				deallocate_nodes(data, _capacity);
 				delete hash_policy;
+				delete _storage_policy;
 			}
 
 			// операторы присвоения 
@@ -383,6 +450,9 @@ namespace shti {
 					comparator = _other.comparator;
 					if (hash_policy != nullptr) {
 						delete hash_policy;
+					}
+					if (_storage_policy != nullptr) {
+						delete _storage_policy;
 					}
 					data = allocate_nodes(_capacity);
 					for (size_t i = 0; i < _capacity; ++i) {
@@ -402,6 +472,7 @@ namespace shti {
 						data[i] = new_node;
 					}
 					hash_policy = new rehash_p(*_other.hash_policy);
+					_storage_policy = new storage_policy_type(*_other._storage_policy);
 				}
 				return *this;
 			}
@@ -422,6 +493,11 @@ namespace shti {
 					}
 					hash_policy = std::move(_other.hash_policy);
 					_other.hash_policy = nullptr;
+					if (_storage_policy != nullptr) {
+						delete _storage_policy;
+					}
+					_storage_policy = std::move(_other._storage_policy);
+					_other._storage_policy = nullptr;
 					_other.data = nullptr;
 					_other._size = 0;
 					_other._capacity = 0;
@@ -461,7 +537,7 @@ namespace shti {
 			template <typename K, typename V>
 			std::pair<iterator, bool> emplace(K && _key, V && _value) {
 				size_type index = key_to_index(_key); // получаем индекс
-				if (valid_key(_key, index)) {
+				if (_storage_policy->can_insert(data[index], _key)) {
 					if (hash_policy->check_currient_size(_size + 1, _capacity, rehash_coef)) {
 						rehash(hash_policy->get_next_size(_size + 1, _capacity));
 					}
@@ -682,8 +758,6 @@ namespace shti {
 			}
 
 		protected:
-			// возвращает true если можно выполнить вставку
-			virtual bool valid_key(const key_type & key, size_type index) = 0;
 
 			// перераспределение элементов в таблице
 			void rehash(size_type new_size) {
@@ -724,192 +798,28 @@ namespace shti {
 			node_pointer_alloc np_alloc;
 			rehash_p * hash_policy;
 			comp comparator; // компаратор
+			storage_policy_type * _storage_policy; 
 	};
-
-
+	
 	// хеш таблица
-	template<  typename key_type,
+	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
 		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t,
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
-		class hash_table : protected basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p> {
-
-		friend bool operator==(const hash_table & ht1, const hash_table & ht2) {
-			if (ht1.size() != ht2.size()) {
-				return false;
-			}
-			for (auto it1 = ht1.begin(), it2 = ht2.begin(); it1 != ht1.end(); ++it1, ++it2) {
-				if (it1->first != it2->first || it1->second != it2->second) {
-					return false;
-				}
-			}
-			return true;
-		}
-		friend bool operator!=(const hash_table & ht1, const hash_table & ht2) {
-			return !(ht1==ht2);
-		}
-
-		using base_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p>;
-
-		public:
-			using base_table::begin;
-			using base_table::end;
-			using base_table::cbegin;
-			using base_table::cend;
-			using base_table::find;
-			using base_table::insert;
-			using base_table::insert_or_assign;
-			using base_table::emplace;
-			using base_table::erase;
-			using base_table::operator=;
-			using base_table::operator[];
-			using base_table::at;
-			using base_table::swap;
-			using base_table::size;
-			using base_table::capacity;
-			using base_table::empty;
-			using base_table::clear;
-			using base_table::count;
-			using base_table::resize;
-			using base_table::get_hash_func;
-			using base_table::get_allocator;
-
-			using base_table::_iterator;
-
-			using iterator = _iterator<basic_hash_table, false>;
-			using const_iterator = _iterator<basic_hash_table, true>;
-
-			// конструктор класса
-			hash_table() : basic_hash_table() { };
-			hash_table(size_type capasity) : basic_hash_table(capasity) { }
-			//	hash_table(iterator begin, iterator end) : basic_hash_table(begin, end) { }
-			hash_table(const hash_table & _other) :
-				basic_hash_table(_other) {
-				//insert(_other.begin(), _other.end());
-			}
-			hash_table(hash_table && _other) : basic_hash_table(std::move(_other)) { }
-
-			~hash_table(){}
-
-			// операторы присваивания
-			hash_table & operator=(const hash_table & other) {
-				base_table::operator=(other);
-				return *this;
-			}
-			hash_table & operator=(hash_table && other) {
-				base_table::operator=(std::move(other));
-				return *this;
-			}
-
-		protected:
-
-			using base_table::node;
-			using base_table::node_type;
-			using base_table::data;
-
-			bool valid_key(const key_type & key, size_type index) {
-				node_type* result = data[index];
-				while (result) {
-					if (result->data.first == key) {
-						return false;
-					}
-					result = result->next;
-				}
-				return true;
-			}
-
-	};
+		using hash_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p, storage_policy::unique_storage_policy>;
 
 	// хеш таблица допускающая хранение значений под одинаковыми ключами
-	template<  typename key_type,
+	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
 		typename comp = std::equal_to<key_type>,
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t,
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
-		class hash_multitable : protected basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p> {
-
-		friend bool operator==(const hash_table & ht1, const hash_table & ht2) {
-			if (ht1.size() != ht2.size()) {
-				return false;
-			}
-			for (auto it1 = ht1.begin(), it2 = ht2.begin(); it1 != ht1.end(); ++it1, ++it2) {
-				if (it1->first != it2->first || it1->second != it2->second) {
-					return false;
-				}
-			}
-			return true;
-		}
-		friend bool operator!=(const hash_table & ht1, const hash_table & ht2) {
-			return !(ht1 == ht2);
-		}
-
-		using base_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p>;
-
-		public:
-			using base_table::begin;
-			using base_table::end;
-			using base_table::cbegin;
-			using base_table::cend;
-			using base_table::find;
-			using base_table::insert;
-			using base_table::insert_or_assign;
-			using base_table::emplace;
-			using base_table::erase;
-			using base_table::operator=;
-			using base_table::operator[];
-			using base_table::at;
-			using base_table::swap;
-			using base_table::size;
-			using base_table::capacity;
-			using base_table::empty;
-			using base_table::clear;
-			using base_table::count;
-			using base_table::resize;
-			using base_table::get_hash_func;
-			using base_table::get_allocator;
-
-			using base_table::_iterator;
-
-			using iterator = _iterator<basic_hash_table, false>;
-			using const_iterator = _iterator<basic_hash_table, true>;
-
-			// конструктор класса
-			hash_multitable() : basic_hash_table() { };
-			hash_multitable(size_type capasity) : basic_hash_table(capasity) { }
-			//	hash_multitable(iterator begin, iterator end) : basic_hash_table(begin, end) { }
-			hash_multitable(const hash_multitable & _other) :
-				basic_hash_table(_other) {
-			//	insert(_other.begin(), _other.end());
-			}
-			hash_multitable(hash_multitable && _other) : basic_hash_table(std::move(_other)) { }
-
-			~hash_multitable()  {}
-
-			// операторы присваивания
-			hash_multitable & operator=(const hash_multitable & other) {
-				base_table::operator=(other);
-				return *this;
-			}
-			hash_multitable & operator=(hash_multitable && other) {
-				base_table::operator=(std::move(other));
-				return *this;
-			}
-
-		protected:
-
-			using base_table::node;
-			using base_table::node_type;
-			using base_table::data;
-
-			bool valid_key(const key_type & key, size_type index) {
-				return true;
-			}
-	};
+		using hash_multitable = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p, storage_policy::multi_storage_policy>;
 
 };
 
