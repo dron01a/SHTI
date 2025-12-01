@@ -170,6 +170,7 @@ namespace shti {
 		class basic_hash_table {
 			using value_pair = std::pair<const key_type, T>;
 
+			// операторы сравнения 
 			friend bool operator==(const basic_hash_table & ht1, const basic_hash_table & ht2) {
 				if (ht1.size() != ht2.size()) {
 					return false;
@@ -218,7 +219,7 @@ namespace shti {
 					delete next;
 					data.first = std::move(other.first);
 					data.second = std::move(other.second);
-					next = other.next;
+					next = std::move(other.next);
 					other.next = nullptr;
 					return *this;
 				}
@@ -238,6 +239,28 @@ namespace shti {
 				node_type **data = np_alloc.allocate(count);
 				std::memset(data, 0, count * sizeof(node_type*));
 				return data;
+			}
+
+			// копирует узлы
+			node_type** copy_nodes(node_type** _src, size_type _size) {
+				node_type ** result = allocate_nodes(_size);
+				for (size_t i = 0; i < _capacity; ++i) {
+					if (!_src[i]) {
+						continue;
+					}
+					node_type * cur = _src[i];
+					node_type * new_node = allocate_node(cur->data.first, cur->data.second, nullptr);
+					node_type * last = new_node;
+					cur = cur->next;
+					while (cur) {
+						node_type * new_child = allocate_node(cur->data.first, cur->data.second, nullptr);
+						last->next = new_child;
+						last = last->next;
+						cur = cur->next;
+					}
+					result[i] = new_node;
+				}
+				return result;
 			}
 
 			// размещает узел
@@ -389,23 +412,7 @@ namespace shti {
 				np_alloc(_other.np_alloc), 
 				n_alloc(_other.n_alloc),
 				comparator(_other.comparator) {
-				data = allocate_nodes(_capacity);
-				for (size_t i = 0; i < _capacity; ++i) {
-					if (!_other.data[i]) {
-						continue;
-					}
-					node_type * cur = _other.data[i];
-					node_type * new_node = allocate_node(cur->data.first, cur->data.second, nullptr);
-					node_type * last = new_node;
-					cur = cur->next;
-					while (cur){
-						node_type * new_child = allocate_node(cur->data.first, cur->data.second, nullptr);
-						last->next = new_child;
-						last = last->next;
-						cur = cur->next;
-					}
-					data[i] = new_node;
-				}
+				data = copy_nodes(_other.data, _other._capacity);
 				hash_policy = new rehash_p(*_other.hash_policy);
 				_storage_policy = new storage_policy_type(*_other._storage_policy);
 
@@ -448,29 +455,9 @@ namespace shti {
 					np_alloc =_other.np_alloc;
 					n_alloc = _other.n_alloc;
 					comparator = _other.comparator;
-					if (hash_policy != nullptr) {
-						delete hash_policy;
-					}
-					if (_storage_policy != nullptr) {
-						delete _storage_policy;
-					}
-					data = allocate_nodes(_capacity);
-					for (size_t i = 0; i < _capacity; ++i) {
-						if (!_other.data[i]) {
-							continue;
-						}
-						node_type * cur = _other.data[i];
-						node_type * new_node = allocate_node(cur->data.first, cur->data.second, nullptr);
-						node_type * last = new_node;
-						cur = cur->next;
-						while (cur) {
-							node_type * new_child = allocate_node(cur->data.first, cur->data.second, nullptr);
-							last->next = new_child;
-							last = last->next;
-							cur = cur->next;
-						}
-						data[i] = new_node;
-					}
+					delete hash_policy;
+					delete _storage_policy;
+					data = copy_nodes(_other.data, _other._capacity);
 					hash_policy = new rehash_p(*_other.hash_policy);
 					_storage_policy = new storage_policy_type(*_other._storage_policy);
 				}
@@ -583,11 +570,15 @@ namespace shti {
 			}
 
 			// оператор выдачи по индексу
-			T & operator[](const key_type &key) {
-				return emplace(key, T()).first->second;  //find(key)->second;
+			T & operator[](const key_type & _key) {
+				iterator node = find(_key);
+				if (node == end()) {
+					return emplace(_key, T()).first->second;
+				}
+				return node->second;
 			}
 
-			// выдает элемент, но с проверкой
+			// выдает элемент с проверкой
 			T & at(const key_type & key) {
 				iterator res = find(key);
 				if (res == end()) {
@@ -650,6 +641,20 @@ namespace shti {
 					cur = erase(cur);
 				}
 				return iterator(this, const_cast<node_type *>(end.get_node()), end.get_index());
+			}
+
+			// операция объединения с другой таблицей
+			void merge(const basic_hash_table & src) {
+				for (auto it = src.begin(); it != src.end(); ++it) {
+					this->emplase(it->first, it->second);
+				}
+			}
+			void merge(basic_hash_table && src) {
+				merge(src);
+				src.clear();
+				src.deallocate_nodes(src.data, src.capacity());
+				src._capacity = 0;
+				src.data = nullptr;
 			}
 
 			// меняет местами с другой таблицей
@@ -798,7 +803,7 @@ namespace shti {
 			node_pointer_alloc np_alloc;
 			rehash_p * hash_policy;
 			comp comparator; // компаратор
-			storage_policy_type * _storage_policy; 
+			storage_policy_type * _storage_policy; // политика размещения данных
 	};
 	
 	// хеш таблица

@@ -5,7 +5,7 @@
 
 void basic_operations_test() {
 	std::cout << "=== basic operations test begin ===" << std::endl;
-	shti::hash_table<int, std::string> table;
+	shti::hash_multitable<int, std::string> table;
 	table.insert({ 1, "one"});
 	table.insert({ 2, "two" });
 	table.insert({ 3, "three" });
@@ -221,3 +221,5 @@ int main() {
 	std::cout << "=== Test passed ===" << std::endl;
 	return 0;
 }
+
+#include <unordered_map>
