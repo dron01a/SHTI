@@ -200,6 +200,31 @@ void cmp_operatros_test() {
 	std::cout << "=== compare operators test passed ===" << std::endl << std::endl;
 }
 
+void merge_test() {
+	std::cout << "=== merge test begin ===" << std::endl;
+	shti::hash_table<int, std::string> original;
+	original.insert({ 0, "zero" });
+	original.insert({ 1, "one" });
+	original.insert({ 2, "two" });
+	original.insert({ 3, "three" });
+	original.insert({ 4, "chetiri" });
+	original.insert({ 5, "piat" });
+	original.insert({ 6, "six" });
+	shti::hash_table<int, std::string> merged;
+	merged.insert({ 7, "seven" });
+	merged.insert({ 8, "vosem" });
+	merged.insert({ 9, "devat" });
+	merged.merge(original);
+	assert(merged.size() == 10);
+	std::cout << "> copy merge test passed" << std::endl;
+	shti::hash_table<int, std::string> moved;
+	moved.merge(std::move(merged));
+	assert(moved.size() == 10);
+	assert(merged.size() == 0);
+	std::cout << "> move merge test passed" << std::endl;
+	std::cout << "=== merge test passed ===" << std::endl << std::endl;
+}
+
 int main() {
 	std::cout << "=== Test begin ===" << std::endl << std::endl;
 	try {
@@ -211,6 +236,7 @@ int main() {
 		copy_test();
 		move_test();
 		cmp_operatros_test();
+		merge_test();
 	}
 	catch (shti::error_type err) {
 		std::cerr << "TEST FALLED" << std::endl;
@@ -221,5 +247,3 @@ int main() {
 	std::cout << "=== Test passed ===" << std::endl;
 	return 0;
 }
-
-#include <unordered_map>

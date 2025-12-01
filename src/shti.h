@@ -646,13 +646,14 @@ namespace shti {
 			// операция объединения с другой таблицей
 			void merge(const basic_hash_table & src) {
 				for (auto it = src.begin(); it != src.end(); ++it) {
-					this->emplase(it->first, it->second);
+					this->emplace(it->first, it->second);
 				}
 			}
 			void merge(basic_hash_table && src) {
 				merge(src);
 				src.clear();
 				src.deallocate_nodes(src.data, src.capacity());
+				src._size = 0;
 				src._capacity = 0;
 				src.data = nullptr;
 			}
