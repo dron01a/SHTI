@@ -12,33 +12,33 @@ namespace shti {
 		value_type_construct_error,
 	};
 
-	// политики изменения размера таблицы
+	// РїРѕР»РёС‚РёРєРё РёР·РјРµРЅРµРЅРёСЏ СЂР°Р·РјРµСЂР° С‚Р°Р±Р»РёС†С‹
 	namespace rehash_policy {
 
-		// базовый класс для плолитики изменения размера таблицы
+		// Р±Р°Р·РѕРІС‹Р№ РєР»Р°СЃСЃ РґР»СЏ РїР»РѕР»РёС‚РёРєРё РёР·РјРµРЅРµРЅРёСЏ СЂР°Р·РјРµСЂР° С‚Р°Р±Р»РёС†С‹
 		template <typename size_type>
 		class base_rehash_policy {
 		public:
-			// возвращает новый размер 
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРѕРІС‹Р№ СЂР°Р·РјРµСЂ 
 			virtual size_type get_next_size(size_type requested, size_type capacity) const = 0;
-			// проверяет необходимость изменения размера
+			// РїСЂРѕРІРµСЂСЏРµС‚ РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚СЊ РёР·РјРµРЅРµРЅРёСЏ СЂР°Р·РјРµСЂР°
 			bool check_currient_size(size_type items_count, size_type capacity, float load_factor) const {
 				return items_count > capacity * load_factor;
 			}
 			virtual ~base_rehash_policy() = default;
 		};
 
-		// стандартная политика изменения размера таблицы (удвоение)
+		// СЃС‚Р°РЅРґР°СЂС‚РЅР°СЏ РїРѕР»РёС‚РёРєР° РёР·РјРµРЅРµРЅРёСЏ СЂР°Р·РјРµСЂР° С‚Р°Р±Р»РёС†С‹ (СѓРґРІРѕРµРЅРёРµ)
 		template <typename size_type>
 		class default_rehash_policy : public base_rehash_policy<size_type> {
 		public:
-			// возвращает новый размер 
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРѕРІС‹Р№ СЂР°Р·РјРµСЂ 
 			size_type get_next_size(size_type requested, size_type capacity) const {
 				return std::max(requested, capacity * 2);
 			}
 		};
 
-		// плитика простых чисел
+		// РїР»РёС‚РёРєР° РїСЂРѕСЃС‚С‹С… С‡РёСЃРµР»
 		template <typename size_type>
 		class prime_rehash_policy : public base_rehash_policy<size_type> {
 		private:
@@ -79,7 +79,7 @@ namespace shti {
 			};
 
 		public:
-			// возвращает новый размер 
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРѕРІС‹Р№ СЂР°Р·РјРµСЂ 
 			size_type get_next_size(size_type requested, size_type capacity) const {
 				for (size_type res : size_table) {
 					if (res > requested) {
@@ -93,11 +93,11 @@ namespace shti {
 			}
 		};
 
-		// политика изменения размера с фиксированным шагом 
+		// РїРѕР»РёС‚РёРєР° РёР·РјРµРЅРµРЅРёСЏ СЂР°Р·РјРµСЂР° СЃ С„РёРєСЃРёСЂРѕРІР°РЅРЅС‹Рј С€Р°РіРѕРј 
 		template <typename size_type, size_type step = 128>
 		class fixed_step_policy : public base_rehash_policy<size_type> {
 		public:
-			// возвращает новый размер 
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРѕРІС‹Р№ СЂР°Р·РјРµСЂ 
 			size_type get_next_size(size_type requested, size_type capacity) const {
 				size_type new_size = capacity;
 				while (new_size < requested) {
@@ -111,24 +111,24 @@ namespace shti {
 		};
 	};
 
-	// политики хранения данных
+	// РїРѕР»РёС‚РёРєРё С…СЂР°РЅРµРЅРёСЏ РґР°РЅРЅС‹С…
 	namespace storage_policy {
 
-		// базовая политика хранения данных
+		// Р±Р°Р·РѕРІР°СЏ РїРѕР»РёС‚РёРєР° С…СЂР°РЅРµРЅРёСЏ РґР°РЅРЅС‹С…
 		template <typename K, typename N>
 		class base_storage_policy {
 		public:
 			using key_type = K;
 			using node_type = N;
 
-			// деструктор
+			// РґРµСЃС‚СЂСѓРєС‚РѕСЂ
 			virtual ~base_storage_policy() = default;
 			
-			// проверка на возможность вставки
+			// РїСЂРѕРІРµСЂРєР° РЅР° РІРѕР·РјРѕР¶РЅРѕСЃС‚СЊ РІСЃС‚Р°РІРєРё
 			virtual bool can_insert(node_type* _data, key_type _key) = 0;
 		};
 
-		// политика ханения данных исключающая хранение элементов с одинаковыми ключами
+		// РїРѕР»РёС‚РёРєР° С…Р°РЅРµРЅРёСЏ РґР°РЅРЅС‹С… РёСЃРєР»СЋС‡Р°СЋС‰Р°СЏ С…СЂР°РЅРµРЅРёРµ СЌР»РµРјРµРЅС‚РѕРІ СЃ РѕРґРёРЅР°РєРѕРІС‹РјРё РєР»СЋС‡Р°РјРё
 		template <typename K, typename N>
 		class unique_storage_policy : public base_storage_policy<K,N> {
 			using typename base_storage_policy<K, N>::key_type;
@@ -146,7 +146,7 @@ namespace shti {
 			}
 		};
 
-		// политика хранения данных разрешающая хранение данных с одинаковыми ключами
+		// РїРѕР»РёС‚РёРєР° С…СЂР°РЅРµРЅРёСЏ РґР°РЅРЅС‹С… СЂР°Р·СЂРµС€Р°СЋС‰Р°СЏ С…СЂР°РЅРµРЅРёРµ РґР°РЅРЅС‹С… СЃ РѕРґРёРЅР°РєРѕРІС‹РјРё РєР»СЋС‡Р°РјРё
 		template <typename K, typename N>
 		class multi_storage_policy : public base_storage_policy<K, N> {
 			using typename base_storage_policy<K, N>::key_type;
@@ -158,7 +158,7 @@ namespace shti {
 		};
 	};
 
-	// базовый класс хеш таблицы
+	// Р±Р°Р·РѕРІС‹Р№ РєР»Р°СЃСЃ С…РµС€ С‚Р°Р±Р»РёС†С‹
 	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
@@ -170,7 +170,7 @@ namespace shti {
 		class basic_hash_table {
 			using value_pair = std::pair<const key_type, T>;
 
-			// операторы сравнения 
+			// РѕРїРµСЂР°С‚РѕСЂС‹ СЃСЂР°РІРЅРµРЅРёСЏ 
 			friend bool operator==(const basic_hash_table & ht1, const basic_hash_table & ht2) {
 				if (ht1.size() != ht2.size()) {
 					return false;
@@ -188,11 +188,11 @@ namespace shti {
 
 		private:
 
-			// класс узла хеш таблицы
+			// РєР»Р°СЃСЃ СѓР·Р»Р° С…РµС€ С‚Р°Р±Р»РёС†С‹
 			template<typename key_type, typename T>
 			struct node {
 			public:
-				// конструктор класса
+				// РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР°
 				node(key_type _key, T _value, node * _next = nullptr)
 					: data(_key, _value), next(_next) {}
 				node(const node & _node) : data(_node.data), next(_node.next) {}
@@ -201,13 +201,13 @@ namespace shti {
 				}
 				node() {}
 
-				// деструктор класса
+				// РґРµСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР°
 				~node() {
 					delete next;
 					next = nullptr;
 				}
 
-				// оператор присваивания 
+				// РѕРїРµСЂР°С‚РѕСЂ РїСЂРёСЃРІР°РёРІР°РЅРёСЏ 
 				node & operator=(node& other) noexcept {
 					data.first = other.first;
 					data.second = other.second;
@@ -224,8 +224,8 @@ namespace shti {
 					return *this;
 				}
 
-				std::pair<const key_type, T> data; // данные
-				node * next; // значение
+				std::pair<const key_type, T> data; // РґР°РЅРЅС‹Рµ
+				node * next; // Р·РЅР°С‡РµРЅРёРµ
 
 			};
 
@@ -234,14 +234,14 @@ namespace shti {
 			using node_pointer_alloc = typename allocator::template rebind<node_type*>::other;
 			using storage_policy_type = storage_p<key_type, node_type>;
 
-			// выделение памяти под узлы таблицы
+			// РІС‹РґРµР»РµРЅРёРµ РїР°РјСЏС‚Рё РїРѕРґ СѓР·Р»С‹ С‚Р°Р±Р»РёС†С‹
 			node_type ** allocate_nodes(size_type count) {
 				node_type **data = np_alloc.allocate(count);
 				std::memset(data, 0, count * sizeof(node_type*));
 				return data;
 			}
 
-			// копирует узлы
+			// РєРѕРїРёСЂСѓРµС‚ СѓР·Р»С‹
 			node_type** copy_nodes(node_type** _src, size_type _size) {
 				node_type ** result = allocate_nodes(_size);
 				for (size_t i = 0; i < _capacity; ++i) {
@@ -263,7 +263,7 @@ namespace shti {
 				return result;
 			}
 
-			// размещает узел
+			// СЂР°Р·РјРµС‰Р°РµС‚ СѓР·РµР»
 			template <typename K, typename V, typename P>
 			node_type * allocate_node(K && key, V && val, P && next) {
 				node_type * dest = n_alloc.allocate(1);
@@ -277,10 +277,10 @@ namespace shti {
 				return dest;
 			}
 
-			// удаляет конкретный узел 
+			// СѓРґР°Р»СЏРµС‚ РєРѕРЅРєСЂРµС‚РЅС‹Р№ СѓР·РµР» 
 			node_type * remove_node(node_type * cur, node_type * perv, size_type index) {
 				node_type * next;
-				node_type * target = cur; // цель для удаления
+				node_type * target = cur; // С†РµР»СЊ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ
 				if (perv == nullptr) {
 					data[index] = cur->next;
 				}
@@ -296,20 +296,20 @@ namespace shti {
 				return next;
 			}
 
-			// освобождение памяти 
+			// РѕСЃРІРѕР±РѕР¶РґРµРЅРёРµ РїР°РјСЏС‚Рё 
 			void deallocate_nodes(node_type ** nodes, size_type count) {
 				np_alloc.deallocate(nodes, count);
 			}
 
 		public:
 
-			// класс итератора
+			// РєР»Р°СЃСЃ РёС‚РµСЂР°С‚РѕСЂР°
 			template<typename table_t, bool _const>
 			class _iterator {
 				friend class _iterator<table_t, true>;
 				friend class _iterator<table_t, false>;
 			public:
-				// для совместимости с STL
+				// РґР»СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё СЃ STL
 				using iterator_category = std::forward_iterator_tag;
 				using difference_type = std::ptrdiff_t;
 				using value_type = std::pair<const key_type, T>;
@@ -320,23 +320,23 @@ namespace shti {
 				using node_pointer = std::conditional_t<_const, const node_type *, node_type *>;
 
 			private:
-				table_type * _owner = nullptr; // таблица которой принадлежит итератор
-				size_type _index = 0; // текущий индекс
-				node_pointer cur_node = nullptr; // указатель на текущий узел
+				table_type * _owner = nullptr; // С‚Р°Р±Р»РёС†Р° РєРѕС‚РѕСЂРѕР№ РїСЂРёРЅР°РґР»РµР¶РёС‚ РёС‚РµСЂР°С‚РѕСЂ
+				size_type _index = 0; // С‚РµРєСѓС‰РёР№ РёРЅРґРµРєСЃ
+				node_pointer cur_node = nullptr; // СѓРєР°Р·Р°С‚РµР»СЊ РЅР° С‚РµРєСѓС‰РёР№ СѓР·РµР»
 
-				// выполняет поиск следующей инициализированной ячейки
+				// РІС‹РїРѕР»РЅСЏРµС‚ РїРѕРёСЃРє СЃР»РµРґСѓСЋС‰РµР№ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅРЅРѕР№ СЏС‡РµР№РєРё
 				void find_next_init_node() {
 					if (!_owner) {
 						return;
 					}
 					while (_owner->data[_index] == nullptr && _index < _owner->_capacity) {
-						_index++; // пока не встретим инициализированую ячейку
+						_index++; // РїРѕРєР° РЅРµ РІСЃС‚СЂРµС‚РёРј РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅСѓСЋ СЏС‡РµР№РєСѓ
 					};
 					cur_node = (_index < _owner->_capacity) ? _owner->data[_index] : nullptr;
 				}
 
 			public:
-				// конструктор класса
+				// РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР°
 				_iterator() = default;
 				_iterator(table_type * owner, size_type index = 0) : _owner(owner), _index(index) {
 					find_next_init_node();
@@ -348,7 +348,7 @@ namespace shti {
 				_iterator(const _iterator<table_t, iter_const> & _iter)
 					: _owner(_iter._owner), _index(_iter._index), cur_node(_iter.cur_node) {}
 
-				// оператры сравнения
+				// РѕРїРµСЂР°С‚СЂС‹ СЃСЂР°РІРЅРµРЅРёСЏ
 				template<bool oth_const>
 				bool operator==(const _iterator<table_t, oth_const> & it) const {
 					return _owner == it._owner && _index == it._index && it.cur_node == cur_node;
@@ -366,7 +366,7 @@ namespace shti {
 					return &cur_node->data;
 				}
 
-				// инкремент
+				// РёРЅРєСЂРµРјРµРЅС‚
 				_iterator & operator++() {
 					if (cur_node->next != nullptr) {
 						cur_node = cur_node->next;
@@ -392,7 +392,7 @@ namespace shti {
 			using iterator = _iterator<basic_hash_table, false>;
 			using const_iterator = _iterator<basic_hash_table, true>;
 
-			// конструктор класса
+			// РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР°
 			basic_hash_table() {
 				hash_policy = new rehash_p();
 				_storage_policy = new storage_policy_type();
@@ -435,7 +435,7 @@ namespace shti {
 				_other._capacity = 0;
 			}
 
-			// деструктор класса
+			// РґРµСЃС‚СЂСѓРєС‚РѕСЂ РєР»Р°СЃСЃР°
 			~basic_hash_table() {
 				clear();
 				deallocate_nodes(data, _capacity);
@@ -443,7 +443,7 @@ namespace shti {
 				delete _storage_policy;
 			}
 
-			// операторы присвоения 
+			// РѕРїРµСЂР°С‚РѕСЂС‹ РїСЂРёСЃРІРѕРµРЅРёСЏ 
 			basic_hash_table & operator=(const basic_hash_table & _other) {
 				if (this != &_other) {
 					clear();
@@ -492,17 +492,17 @@ namespace shti {
 				return *this;
 			}
 
-			// итераторы указывающие на начало
+			// РёС‚РµСЂР°С‚РѕСЂС‹ СѓРєР°Р·С‹РІР°СЋС‰РёРµ РЅР° РЅР°С‡Р°Р»Рѕ
 			iterator begin() noexcept { return iterator(this); }
 			const_iterator begin() const noexcept { return const_iterator(this); }
 			const_iterator cbegin() const noexcept { return const_iterator(this); }
 
-			// итераторы указывающие на конец
+			// РёС‚РµСЂР°С‚РѕСЂС‹ СѓРєР°Р·С‹РІР°СЋС‰РёРµ РЅР° РєРѕРЅРµС†
 			iterator end() noexcept { return iterator(this, _capacity); }
 			const_iterator end() const noexcept { return const_iterator(this, _capacity); }
 			const_iterator cend() const noexcept { return const_iterator(this, _capacity); }
 
-			// выполняет вставку элемента в таблицу
+			// РІС‹РїРѕР»РЅСЏРµС‚ РІСЃС‚Р°РІРєСѓ СЌР»РµРјРµРЅС‚Р° РІ С‚Р°Р±Р»РёС†Сѓ
 			std::pair<iterator, bool> insert(const value_pair & value) {
 				return emplace(value.first, value.second);
 			}
@@ -512,18 +512,18 @@ namespace shti {
 			template<typename iter_t>
 			void insert(iter_t begin, iter_t end) {
 				for (auto it = begin; it != end; ++it) {
-					insert(*it); // добавляем элементы из списка
+					insert(*it); // РґРѕР±Р°РІР»СЏРµРј СЌР»РµРјРµРЅС‚С‹ РёР· СЃРїРёСЃРєР°
 				}
 			}
 			iterator insert(std::initializer_list<value_pair> data_list) {
 				for (auto it = data_list.begin(); it != data_list.end(); it++) {
-					emplace(it->first, it->second); // добавляем элементы из списка
+					emplace(it->first, it->second); // РґРѕР±Р°РІР»СЏРµРј СЌР»РµРјРµРЅС‚С‹ РёР· СЃРїРёСЃРєР°
 				}
 				return find(data_list.end()->first);
 			}
 			template <typename K, typename V>
 			std::pair<iterator, bool> emplace(K && _key, V && _value) {
-				size_type index = key_to_index(_key); // получаем индекс
+				size_type index = key_to_index(_key); // РїРѕР»СѓС‡Р°РµРј РёРЅРґРµРєСЃ
 				if (_storage_policy->can_insert(data[index], _key)) {
 					if (hash_policy->check_currient_size(_size + 1, _capacity, rehash_coef)) {
 						rehash(hash_policy->get_next_size(_size + 1, _capacity));
@@ -531,16 +531,16 @@ namespace shti {
 					_size++;
 					node_type * new_node = allocate_node(_key, _value, std::move(data[index]));
 					data[index] = new_node;
-					return{ iterator(this, new_node, index), true }; // возвращаем итератор на вставленный элемент
+					return{ iterator(this, new_node, index), true }; // РІРѕР·РІСЂР°С‰Р°РµРј РёС‚РµСЂР°С‚РѕСЂ РЅР° РІСЃС‚Р°РІР»РµРЅРЅС‹Р№ СЌР»РµРјРµРЅС‚
 				}
-				return{ find(_key), false }; // возвращаем итератор на существующий элемент
+				return{ iterator(this, data[index], index), false }; // РІРѕР·РІСЂР°С‰Р°РµРј РёС‚РµСЂР°С‚РѕСЂ РЅР° СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ СЌР»РµРјРµРЅС‚
 			}
 
-			// выполняет поиск элемента в таблице по ключу
+			// РІС‹РїРѕР»РЅСЏРµС‚ РїРѕРёСЃРє СЌР»РµРјРµРЅС‚Р° РІ С‚Р°Р±Р»РёС†Рµ РїРѕ РєР»СЋС‡Сѓ
 			iterator find(const key_type &key) {
-				size_type index = key_to_index(key); // получаем индекс элемента
+				size_type index = key_to_index(key); // РїРѕР»СѓС‡Р°РµРј РёРЅРґРµРєСЃ СЌР»РµРјРµРЅС‚Р°
 				node_type * cur_node = data[index];
-				while (cur_node != nullptr) { // ищем не занятую ячейку внутри уже существуещей
+				while (cur_node != nullptr) { // РёС‰РµРј РЅРµ Р·Р°РЅСЏС‚СѓСЋ СЏС‡РµР№РєСѓ РІРЅСѓС‚СЂРё СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‰РµР№
 					if (comparator(cur_node->data.first, key)) {
 						return iterator(this, cur_node, index);
 					}
@@ -552,7 +552,7 @@ namespace shti {
 				return const_cast<basic_hash_table *>(this)->find(key);
 			}
 
-			// выполняет вставку элемента или обновялет значение в зависимости от наличия в таблице
+			// РІС‹РїРѕР»РЅСЏРµС‚ РІСЃС‚Р°РІРєСѓ СЌР»РµРјРµРЅС‚Р° РёР»Рё РѕР±РЅРѕРІСЏР»РµС‚ Р·РЅР°С‡РµРЅРёРµ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РЅР°Р»РёС‡РёСЏ РІ С‚Р°Р±Р»РёС†Рµ
 			template <typename K, typename V>
 			std::pair<iterator, bool> insert_or_assign(K && _key, V && _value) {
 				iterator node = find(_key);
@@ -569,7 +569,7 @@ namespace shti {
 				return insert_or_assign(std::move(value.first), std::move(value.second));
 			}
 
-			// оператор выдачи по индексу
+			// РѕРїРµСЂР°С‚РѕСЂ РІС‹РґР°С‡Рё РїРѕ РёРЅРґРµРєСЃСѓ
 			T & operator[](const key_type & _key) {
 				iterator node = find(_key);
 				if (node == end()) {
@@ -578,7 +578,7 @@ namespace shti {
 				return node->second;
 			}
 
-			// выдает элемент с проверкой
+			// РІС‹РґР°РµС‚ СЌР»РµРјРµРЅС‚ СЃ РїСЂРѕРІРµСЂРєРѕР№
 			T & at(const key_type & key) {
 				iterator res = find(key);
 				if (res == end()) {
@@ -590,12 +590,12 @@ namespace shti {
 				return const_cast<basic_hash_table *>(this)->at(key);
 			}
 
-			// методы для удаления элементов
+			// РјРµС‚РѕРґС‹ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ СЌР»РµРјРµРЅС‚РѕРІ
 			size_type erase(const key_type & key) {
 				size_type result = 0;
 				size_type index = key_to_index(key);
 				node_type * cur = data[index];
-				node_type * perv = nullptr; // предыдущий узел 
+				node_type * perv = nullptr; // РїСЂРµРґС‹РґСѓС‰РёР№ СѓР·РµР» 
 				while (cur) {
 					if (comparator(cur->data.first, key)) {
 						cur = remove_node(cur, perv, index);
@@ -612,8 +612,8 @@ namespace shti {
 				if (itr == end() || itr.get_table() != this || !itr.valid()) {
 					return end();
 				}
-				node_type * cur = data[itr.get_index()]; // текущий
-				node_type * perv = nullptr; // предыдущий узел 
+				node_type * cur = data[itr.get_index()]; // С‚РµРєСѓС‰РёР№
+				node_type * perv = nullptr; // РїСЂРµРґС‹РґСѓС‰РёР№ СѓР·РµР» 
 				while (cur) {
 					if (cur->data.first == itr->first) {
 						cur = remove_node(cur, perv, itr.get_index());
@@ -643,7 +643,7 @@ namespace shti {
 				return iterator(this, const_cast<node_type *>(end.get_node()), end.get_index());
 			}
 
-			// операция объединения с другой таблицей
+			// РѕРїРµСЂР°С†РёСЏ РѕР±СЉРµРґРёРЅРµРЅРёСЏ СЃ РґСЂСѓРіРѕР№ С‚Р°Р±Р»РёС†РµР№
 			void merge(const basic_hash_table & src) {
 				for (auto it = src.begin(); it != src.end(); ++it) {
 					this->emplace(it->first, it->second);
@@ -658,7 +658,7 @@ namespace shti {
 				src.data = nullptr;
 			}
 
-			// меняет местами с другой таблицей
+			// РјРµРЅСЏРµС‚ РјРµСЃС‚Р°РјРё СЃ РґСЂСѓРіРѕР№ С‚Р°Р±Р»РёС†РµР№
 			void swap(basic_hash_table & ht) {
 				std::swap(data, ht.data);
 				std::swap(_capacity, ht._capacity);
@@ -670,16 +670,16 @@ namespace shti {
 				std::swap(comparator, ht.comparator);
 			}
 
-			// возвращает колличество элементов
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ РєРѕР»Р»РёС‡РµСЃС‚РІРѕ СЌР»РµРјРµРЅС‚РѕРІ
 			size_type size() const noexcept { return _size; }
 
-			// возвращает зарезервиврованное колличество элементов
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ Р·Р°СЂРµР·РµСЂРІРёРІСЂРѕРІР°РЅРЅРѕРµ РєРѕР»Р»РёС‡РµСЃС‚РІРѕ СЌР»РµРјРµРЅС‚РѕРІ
 			size_type capacity() const noexcept { return _capacity; }
 
-			// возвращает true если элемент пустой
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ true РµСЃР»Рё СЌР»РµРјРµРЅС‚ РїСѓСЃС‚РѕР№
 			bool empty() { return _size == 0; }
 
-			// очищает контенер
+			// РѕС‡РёС‰Р°РµС‚ РєРѕРЅС‚РµРЅРµСЂ
 			void clear() {
 				for (size_type i = 0; i < _capacity; ++i) {
 					if (data[i] != nullptr) {
@@ -691,15 +691,15 @@ namespace shti {
 				_size = 0;
 			}
 
-			// возвращает колличесво элементов с указанным ключем
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ РєРѕР»Р»РёС‡РµСЃРІРѕ СЌР»РµРјРµРЅС‚РѕРІ СЃ СѓРєР°Р·Р°РЅРЅС‹Рј РєР»СЋС‡РµРј
 			size_type count(const key_type &key) {
 				size_type result = 0;
-				size_type index = key_to_index(key); // получаем индекс элемента
+				size_type index = key_to_index(key); // РїРѕР»СѓС‡Р°РµРј РёРЅРґРµРєСЃ СЌР»РµРјРµРЅС‚Р°
 				if (data[index] == nullptr) {
 					return 0;
 				}
 				node_type * cur_node = data[index];
-				while (cur_node != nullptr) { // ищем не занятую ячейку внутри уже существуещей
+				while (cur_node != nullptr) { // РёС‰РµРј РЅРµ Р·Р°РЅСЏС‚СѓСЋ СЏС‡РµР№РєСѓ РІРЅСѓС‚СЂРё СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‰РµР№
 					if (comparator(cur_node->key, key)) {
 						result++;
 					}
@@ -708,7 +708,7 @@ namespace shti {
 				return result;
 			}
 
-			// изменяет размер 
+			// РёР·РјРµРЅСЏРµС‚ СЂР°Р·РјРµСЂ 
 			void resize(size_type new_size) {
 				if (new_size > _capacity) {
 					rehash(new_size);
@@ -716,32 +716,32 @@ namespace shti {
 				return;
 			}
 
-			// возвращает хеш функцию
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ С…РµС€ С„СѓРЅРєС†РёСЋ
 			hash_f get_hash_func() const {
 				return hasher;
 			}
 
-			// возвращает текущий компаратор
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ С‚РµРєСѓС‰РёР№ РєРѕРјРїР°СЂР°С‚РѕСЂ
 			comp get_equal() const {
 				return comparator;
 			}
 
-			// Возвращает аллокатор
+			// Р’РѕР·РІСЂР°С‰Р°РµС‚ Р°Р»Р»РѕРєР°С‚РѕСЂ
 			node_pointer_alloc get_allocator() const {
 				return np_alloc;
 			}
 
-			// возращает текущий коэффициент загруженности
+			// РІРѕР·СЂР°С‰Р°РµС‚ С‚РµРєСѓС‰РёР№ РєРѕСЌС„С„РёС†РёРµРЅС‚ Р·Р°РіСЂСѓР¶РµРЅРЅРѕСЃС‚Рё
 			float load_factor() const{
 				return float(_size / _capacity);
 			}
 
-			// возращает максимальный коэффициент загруженности
+			// РІРѕР·СЂР°С‰Р°РµС‚ РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ РєРѕСЌС„С„РёС†РёРµРЅС‚ Р·Р°РіСЂСѓР¶РµРЅРЅРѕСЃС‚Рё
 			float max_load_factor() const {
 				return rehash_coef
 			}
 
-			// устанавливает максимальный коэффициент загруженности
+			// СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ РјР°РєСЃРёРјР°Р»СЊРЅС‹Р№ РєРѕСЌС„С„РёС†РёРµРЅС‚ Р·Р°РіСЂСѓР¶РµРЅРЅРѕСЃС‚Рё
 			void max_load_factor(float factor) {
 				if (factor > 1 || factor < 0) {
 					return;
@@ -749,12 +749,12 @@ namespace shti {
 				rehash_coef = factor;
 			}
 
-			// возвращает текущюю политику хеширования
+			// РІРѕР·РІСЂР°С‰Р°РµС‚ С‚РµРєСѓС‰СЋСЋ РїРѕР»РёС‚РёРєСѓ С…РµС€РёСЂРѕРІР°РЅРёСЏ
 			rehash_policy::base_rehash_policy<size_type> * get_rehash_policy() const{
 				return hash_policy;
 			}
 
-			// устанавливает политику хеширования
+			// СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ РїРѕР»РёС‚РёРєСѓ С…РµС€РёСЂРѕРІР°РЅРёСЏ
 			template<typename policy>
 			void set_rehash_policy(policy _policy) {
 				if (hash_policy) {
@@ -763,9 +763,9 @@ namespace shti {
 				hash_policy = new rehash_p(_policy);
 			}
 
-		protected:
+		private:
 
-			// перераспределение элементов в таблице
+			// РїРµСЂРµСЂР°СЃРїСЂРµРґРµР»РµРЅРёРµ СЌР»РµРјРµРЅС‚РѕРІ РІ С‚Р°Р±Р»РёС†Рµ
 			void rehash(size_type new_size) {
 				if (new_size == _capacity) {
 					return;
@@ -773,15 +773,16 @@ namespace shti {
 				size_type last_capacity = _capacity;
 				_capacity = new_size;
 				node_type ** temp_data = allocate_nodes(new_size);
-				std::swap(data, temp_data); // меняем местами области памяти
-				node_type * cur_node = nullptr; // текущий узел
-				node_type * next = nullptr; // следующий узел в цепочку
+				std::swap(data, temp_data); // РјРµРЅСЏРµРј РјРµСЃС‚Р°РјРё РѕР±Р»Р°СЃС‚Рё РїР°РјСЏС‚Рё
+				node_type * cur_node = nullptr; // С‚РµРєСѓС‰РёР№ СѓР·РµР»
+				node_type * next = nullptr; // СЃР»РµРґСѓСЋС‰РёР№ СѓР·РµР» РІ С†РµРїРѕС‡РєСѓ
+				size_type index; // РёРЅРґРµРєСЃ СѓР·Р»Р°
 				for (size_type i = 0; i < last_capacity; ++i) {
 					cur_node = temp_data[i];
 					while (cur_node != nullptr) {
 						next = cur_node->next;
-						size_type index = key_to_index(cur_node->data.first);
-						cur_node->next = data[index];
+						index = key_to_index(cur_node->data.first);
+						cur_node->next = std::move(data[index]);
 						data[index] = cur_node;
 						cur_node = next;
 					}
@@ -789,25 +790,25 @@ namespace shti {
 				deallocate_nodes(temp_data, last_capacity);
 			}
 
-			// переход от ключа к индексу
+			// РїРµСЂРµС…РѕРґ РѕС‚ РєР»СЋС‡Р° Рє РёРЅРґРµРєСЃСѓ
 			template <typename key_type>
 			size_type key_to_index(const key_type & key) {
 				return hasher(key) % _capacity;
 			}
 
-			node_type ** data; // данные
-			size_type _capacity = 4; // размер таблицы
-			size_type _size = 0; // текущее число элементов
-			float rehash_coef = 0.8; // коэфициент при котором размер таблицы будет меняться
-			hash_f hasher; // хеш функция 
+			node_type ** data; // РґР°РЅРЅС‹Рµ
+			size_type _capacity = 4; // СЂР°Р·РјРµСЂ С‚Р°Р±Р»РёС†С‹
+			size_type _size = 0; // С‚РµРєСѓС‰РµРµ С‡РёСЃР»Рѕ СЌР»РµРјРµРЅС‚РѕРІ
+			float rehash_coef = 0.8; // РєРѕСЌС„РёС†РёРµРЅС‚ РїСЂРё РєРѕС‚РѕСЂРѕРј СЂР°Р·РјРµСЂ С‚Р°Р±Р»РёС†С‹ Р±СѓРґРµС‚ РјРµРЅСЏС‚СЊСЃСЏ
+			hash_f hasher; // С…РµС€ С„СѓРЅРєС†РёСЏ 
 			node_alloc n_alloc;
 			node_pointer_alloc np_alloc;
 			rehash_p * hash_policy;
-			comp comparator; // компаратор
-			storage_policy_type * _storage_policy; // политика размещения данных
+			comp comparator; // РєРѕРјРїР°СЂР°С‚РѕСЂ
+			storage_policy_type * _storage_policy; // РїРѕР»РёС‚РёРєР° СЂР°Р·РјРµС‰РµРЅРёСЏ РґР°РЅРЅС‹С…
 	};
 	
-	// хеш таблица
+	// С…РµС€ С‚Р°Р±Р»РёС†Р°
 	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
@@ -817,7 +818,7 @@ namespace shti {
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type>>
 		using hash_table = basic_hash_table<key_type, T, hash_f, comp, allocator, size_type, rehash_p, storage_policy::unique_storage_policy>;
 
-	// хеш таблица допускающая хранение значений под одинаковыми ключами
+	// С…РµС€ С‚Р°Р±Р»РёС†Р° РґРѕРїСѓСЃРєР°СЋС‰Р°СЏ С…СЂР°РЅРµРЅРёРµ Р·РЅР°С‡РµРЅРёР№ РїРѕРґ РѕРґРёРЅР°РєРѕРІС‹РјРё РєР»СЋС‡Р°РјРё
 	template< typename key_type,
 		typename T,
 		typename hash_f = std::hash<key_type>,
