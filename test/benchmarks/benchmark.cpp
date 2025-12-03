@@ -10,7 +10,7 @@ benchmark::~benchmark(){
 }
 
 void benchmark::run_all_tests(){
-	//bench_linear_insert();
+	bench_linear_insert();
 	bench_random_insert();
 }
 
@@ -75,7 +75,6 @@ std::vector<int> benchmark::generate_random_numbers(size_t count){
 	for (size_t _i = 0; _i < count; ++_i) {
 		_result.push_back(random(-(int)count, count));
 	}
-	//std::shuffle(_result.begin(), _result.end(), d);
  	return _result;
 }
 

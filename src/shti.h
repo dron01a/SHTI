@@ -195,11 +195,13 @@ namespace shti {
 				// конструктор класса
 				node(key_type _key, T _value, node * _next = nullptr)
 					: data(_key, _value), next(_next) {}
-				node(const node & _node) : data(_node.data), next(_node.next) {}
-				node(node && _node) : data(std::move(_node.data)), next(std::move(_node.next)) {
+				node(const node & _node) : data(_node.data), next(_node.next), hash_val(_node.hash_val) {}
+				node(node && _node) : data(std::move(_node.data)), next(std::move(_node.next)), hash_val(std::move(_node.hash_val)) {
 					_node.next = nullptr;
 				}
-				node() {}
+				node() {
+					next = nullptr;
+				}
 
 				// деструктор класса
 				~node() {
@@ -209,23 +211,26 @@ namespace shti {
 
 				// оператор присваивания 
 				node & operator=(node& other) noexcept {
-					data.first = other.first;
-					data.second = other.second;
+					data.first = other.data.first;
+					data.second = other.data.second;
 					next = other.next;
+					hash_val = other.hash_val;
 					return *this;
 				}
 
 				node& operator=(node && other) noexcept {
 					delete next;
-					data.first = std::move(other.first);
-					data.second = std::move(other.second);
+					data.first = std::move(other.data.first);
+					data.second = std::move(other.data.second);
 					next = std::move(other.next);
+					hash_val = std::move(other.hash_val);
 					other.next = nullptr;
 					return *this;
 				}
 
 				std::pair<const key_type, T> data; // данные
 				node * next; // значение
+				size_t hash_val; // значения хеша
 
 			};
 
@@ -523,13 +528,15 @@ namespace shti {
 			}
 			template <typename K, typename V>
 			std::pair<iterator, bool> emplace(K && _key, V && _value) {
-				size_type index = key_to_index(_key); // получаем индекс
+				size_t hash_val = hasher(_key);
+				size_type index = hash_val & _mask; // получаем индекс
 				if (_storage_policy->can_insert(data[index], _key)) {
 					if (hash_policy->check_currient_size(_size + 1, _capacity, rehash_coef)) {
 						rehash(hash_policy->get_next_size(_size + 1, _capacity));
 					}
 					_size++;
 					node_type * new_node = allocate_node(_key, _value, std::move(data[index]));
+					new_node->hash_val = hash_val;
 					data[index] = new_node;
 					return{ iterator(this, new_node, index), true }; // возвращаем итератор на вставленный элемент
 				}
@@ -767,27 +774,29 @@ namespace shti {
 
 			// перераспределение элементов в таблице
 			void rehash(size_type new_size) {
-				if (new_size == _capacity) {
+				if (new_size <= _capacity) {
 					return;
 				}
-				size_type last_capacity = _capacity;
-				_capacity = new_size;
+				size_type new_mask = new_size - 1;
 				node_type ** temp_data = allocate_nodes(new_size);
-				std::swap(data, temp_data); // меняем местами области памяти
 				node_type * cur_node = nullptr; // текущий узел
 				node_type * next = nullptr; // следующий узел в цепочку
 				size_type index; // индекс узла
-				for (size_type i = 0; i < last_capacity; ++i) {
-					cur_node = temp_data[i];
-					while (cur_node != nullptr) {
+				for (size_type i = 0; i < _capacity; ++i) {
+					cur_node = data[i];
+					while (cur_node) {
 						next = cur_node->next;
-						index = key_to_index(cur_node->data.first);
-						cur_node->next = std::move(data[index]);
-						data[index] = cur_node;
+						index = cur_node->hash_val & new_mask;
+						cur_node->next = temp_data[index];
+						temp_data[index] = cur_node;
 						cur_node = next;
 					}
+					data[i] = nullptr;
 				}
-				deallocate_nodes(temp_data, last_capacity);
+				deallocate_nodes(data, _capacity);
+				_capacity = new_size;
+				_mask = new_mask;
+				data = temp_data;
 			}
 
 			// переход от ключа к индексу
@@ -798,6 +807,7 @@ namespace shti {
 
 			node_type ** data; // данные
 			size_type _capacity = 4; // размер таблицы
+			size_type _mask = _capacity - 1; // маска
 			size_type _size = 0; // текущее число элементов
 			float rehash_coef = 0.8; // коэфициент при котором размер таблицы будет меняться
 			hash_f hasher; // хеш функция 

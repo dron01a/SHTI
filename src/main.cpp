@@ -7,8 +7,12 @@
 
 #include "../test/benchmarks/benchmark.h"
 
+#include <fstream>
+
 int main() {
-	benchmark bench(std::cout);
+	std::ofstream file("result.txt");
+	benchmark bench(file);
 	bench.run_all_tests();
+	file.close();
 	return 0;
 }
