@@ -10,9 +10,9 @@
 #include <fstream>
 
 int main() {
-	std::ofstream file("result.txt");
-	benchmark bench(file);
+	//std::ofstream file("result.txt");
+	benchmark bench(std::cout, 10);
 	bench.run_all_tests();
-	file.close();
+	//file.close();
 	return 0;
 }

@@ -12,6 +12,8 @@ benchmark::~benchmark(){
 void benchmark::run_all_tests(){
 	bench_linear_insert();
 	bench_random_insert();
+	bench_find();
+	bench_random_find();
 }
 
 benchmark::result_vector benchmark::bench(bench_func bfunc, size_t count) {
@@ -28,39 +30,79 @@ void benchmark::bench_linear_insert() {
 	std::vector<size_t> sizes = { 
 		100, 1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000,  
 	};
-	*_stream << "> bench shti::hash_table<int, int>" << std::endl; 
+	*_stream << "\t> bench shti::hash_table<int, int>" << std::endl; 
 	bench<shti::hash_table<int, int>>(sizes, linear_insert_test<shti::hash_table<int, int>>);
 	*_stream << std::endl;
 	struct int_hash {
 		size_t operator()(int i) { return abs(i); }; // простая хеш функция
 	};
-	*_stream << "> bench shti::hash_table<int, int, int_hash>" << std::endl;
+	*_stream << "\t> bench shti::hash_table<int, int, int_hash>" << std::endl;
 	bench<shti::hash_table<int, int>>(sizes, random_insert_test<shti::hash_table<int, int, int_hash>>);
 	*_stream << std::endl;
-	*_stream << "> bench std::unordered_map<int, int>" << std::endl;
+	*_stream << "\t> bench std::unordered_map<int, int>" << std::endl;
 	bench<std::unordered_map<int, int>>(sizes, linear_insert_test<std::unordered_map<int, int>>);
 	*_stream << std::endl;
-	*_stream << "=== linear insert test end ===" << std::endl;
+	*_stream << "=== linear insert test end ===" << std::endl << std::endl;
 }
 
-void benchmark::bench_random_insert(){
+void benchmark::bench_random_insert() {
 	*_stream << "=== random insert test start ===" << std::endl;
 	std::vector<size_t> sizes = {
 		100, 1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000,
 	};
-	*_stream << "> bench shti::hash_table<int, int>" << std::endl;
+	*_stream << "\t> bench shti::hash_table<int, int>" << std::endl;
 	bench<shti::hash_table<int, int>>(sizes, random_insert_test<shti::hash_table<int, int>>);
 	*_stream << std::endl;
 	struct int_hash {
 		size_t operator()(int i) { return abs(i); }; // простая хеш функция
 	};
-	*_stream << "> bench shti::hash_table<int, int, int_hash>" << std::endl;
+	*_stream << "\t> bench shti::hash_table<int, int, int_hash>" << std::endl;
 	bench<shti::hash_table<int, int>>(sizes, random_insert_test<shti::hash_table<int, int, int_hash>>);
 	*_stream << std::endl;
-	*_stream << "> bench std::unordered_map<int, int>" << std::endl;
+	*_stream << "\t> bench std::unordered_map<int, int>" << std::endl;
 	bench<std::unordered_map<int, int>>(sizes, random_insert_test<std::unordered_map<int, int>>);
 	*_stream << std::endl;
-	*_stream << "=== random insert test end ===" << std::endl;
+	*_stream << "=== random insert test end ===" << std::endl << std::endl;
+}
+
+void benchmark::bench_random_find(){
+	*_stream << "=== random bench find test start ===" << std::endl;
+	std::vector<size_t> sizes = {
+		100, 1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000,
+	};
+	*_stream << "\t> bench shti::hash_table<int, int>" << std::endl;
+	bench<shti::hash_table<int, int>>(sizes, random_find_test<shti::hash_table<int, int>>);
+	*_stream << std::endl;
+	struct int_hash {
+		size_t operator()(int i) { return abs(i); }; // простая хеш функция
+	};
+	*_stream << "\t> bench shti::hash_table<int, int, int_hash>" << std::endl;
+	bench<shti::hash_table<int, int>>(sizes, random_find_test<shti::hash_table<int, int, int_hash>>);
+	*_stream << std::endl;
+	*_stream << "\t> bench std::unordered_map<int, int>" << std::endl;
+	bench<std::unordered_map<int, int>>(sizes, random_find_test<std::unordered_map<int, int>>);
+	*_stream << std::endl;
+	*_stream << "=== random bench find test end ===" << std::endl << std::endl;
+}
+
+void benchmark::bench_find(){
+	*_stream << "=== random find test start ===" << std::endl;
+	std::vector<size_t> sizes = {
+		100, 1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000,
+	};
+	*_stream << "\t> bench shti::hash_table<int, int>" << std::endl;
+	bench<shti::hash_table<int, int>>(sizes, find_test<shti::hash_table<int, int>>);
+	*_stream << std::endl;
+	struct int_hash {
+		size_t operator()(int i) { return abs(i); }; // простая хеш функция
+	};
+	*_stream << "\t> bench shti::hash_table<int, int, int_hash>" << std::endl;
+	bench<shti::hash_table<int, int>>(sizes, find_test<shti::hash_table<int, int, int_hash>>);
+	*_stream << std::endl;
+	*_stream << "\t> bench std::unordered_map<int, int>" << std::endl;
+	bench<std::unordered_map<int, int>>(sizes, find_test<std::unordered_map<int, int>>);
+	*_stream << std::endl;
+	*_stream << "=== random find test end ===" << std::endl << std::endl;
 }
 
 double benchmark::random(double begin, double end) {
@@ -108,17 +150,17 @@ std::ostream & operator<<(std::ostream & stream, const benchmark::result & res){
 }
 
 std::ostream & operator<<(std::ostream & stream, const benchmark::result_vector & res_vect){
-	stream << "time = [ " << res_vect[0].time;
+	stream << "\ttime = [ " << res_vect[0].time;
 	for (size_t _i = 1; _i < res_vect.size(); ++_i) {
 		stream << " , " << res_vect[_i].time;
 	}
 	stream << " ] " << std::endl;
-	stream << "count = [ " << res_vect[0].count;
+	stream << "\tcount = [ " << res_vect[0].count;
 	for (size_t _i = 1; _i < res_vect.size(); ++_i) {
 		stream << " , " << res_vect[_i].count;
 	}
 	stream << " ] " << std::endl;
-	stream << "c_per_t = [ " << res_vect[0].c_per_t;
+	stream << "\tc_per_t = [ " << res_vect[0].c_per_t;
 	for (size_t _i = 1; _i < res_vect.size(); ++_i) {
 		stream << " , " << res_vect[_i].c_per_t;
 	}

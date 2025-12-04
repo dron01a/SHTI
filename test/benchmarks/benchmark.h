@@ -85,10 +85,10 @@ private:
 			}
 			median_vect.push_back(median);
 			midle_vect.push_back(midle);
-			*_stream << "\t\tmin = " << min << std::endl;
+			/**_stream << "\t\tmin = " << min << std::endl;
 			*_stream << "\t\tmax = " << max << std::endl;
 			*_stream << "\t\tmedium = " << midle << std::endl;
-			*_stream << "\t\tmedian = " << median << std::endl;
+			*_stream << "\t\tmedian = " << median << std::endl;*/
 		}
 		*_stream << "min\n" << min_vect << std::endl;
 		*_stream << "max\n" << max_vect << std::endl;
@@ -128,6 +128,43 @@ private:
 		return{ res.count(), count, count / res.count() };
 	}
 
+	// выполняет тест функции поиска по случайному ключу
+	void bench_random_find();
+
+	// тестирование функции поиска
+	template <typename table_t>
+	static result random_find_test(size_t count) {
+		table_t _table;
+		int key = random(0, count);
+		for (size_t _i = 0; _i < count; ++_i) {
+			_table.insert({ _i , _i });
+		}
+		time_point begin = clock_type::now(); // начало 
+		auto res_1 =_table.find(key);
+		time_point end = clock_type::now(); // конец
+		duration res = end - begin;
+		return{ res.count(), count, count / res.count() };
+	}
+
+	// выполняет тест функции поиска 
+	void bench_find();
+
+	// тестирование функции поиска
+	template <typename table_t>
+	static result find_test(size_t count) {
+		table_t _table;
+		int key = count / 2;
+		for (size_t _i = 0; _i < count; ++_i) {
+			_table.insert({ _i , _i });
+		}
+		time_point begin = clock_type::now(); // начало 
+		auto res_1 = _table.find(key);
+		time_point end = clock_type::now(); // конец
+		duration res = end - begin;
+		return{ res.count(), count, count / res.count() };
+	}
+
+	// функция для генерации случайных чисел
     static double random(double begin, double end);
 
 
