@@ -115,7 +115,7 @@ namespace shti {
 	namespace storage_policy {
 
 		// базовая политика хранения данных
-		template <typename K, typename N>
+		template <typename K, typename N , typename E>
 		class base_storage_policy {
 		public:
 			using key_type = K;
@@ -129,15 +129,16 @@ namespace shti {
 		};
 
 		// политика ханения данных исключающая хранение элементов с одинаковыми ключами
-		template <typename K, typename N>
-		class unique_storage_policy : public base_storage_policy<K,N> {
-			using typename base_storage_policy<K, N>::key_type;
-			using typename base_storage_policy<K, N>::node_type;
+		template <typename K, typename N, typename E>
+		class unique_storage_policy : public base_storage_policy<K, N, E> {
+			using typename base_storage_policy<K, N, E>::key_type;
+			using typename base_storage_policy<K, N, E>::node_type;
 		public:
 			bool can_insert(node_type* _data, key_type _key) override {
 				node_type * result = _data;
+				E comp;
 				while (result) {
-					if (result->data.first == _key) {
+					if (comp(result->data.first, _key)) {
 						return false;
 					}
 					result = result->next;
@@ -147,10 +148,10 @@ namespace shti {
 		};
 
 		// политика хранения данных разрешающая хранение данных с одинаковыми ключами
-		template <typename K, typename N>
-		class multi_storage_policy : public base_storage_policy<K, N> {
-			using typename base_storage_policy<K, N>::key_type;
-			using typename base_storage_policy<K, N>::node_type;
+		template <typename K, typename N, typename E>
+		class multi_storage_policy : public base_storage_policy<K, N, E> {
+			using typename base_storage_policy<K, N, E>::key_type;
+			using typename base_storage_policy<K, N, E>::node_type;
 		public:
 			bool can_insert(node_type* _data, key_type _key) override {
 				return true;
@@ -166,7 +167,7 @@ namespace shti {
 		typename allocator = std::allocator<std::pair<key_type, T>>,
 		typename size_type = std::size_t, 
 		typename rehash_p = rehash_policy::default_rehash_policy<size_type>, 
-		template <typename, typename> class storage_p = storage_policy::base_storage_policy>
+		template <typename, typename, typename> class storage_p = storage_policy::base_storage_policy>
 		class basic_hash_table {
 			using value_pair = std::pair<const key_type, T>;
 
@@ -237,7 +238,7 @@ namespace shti {
 			using node_type = node<key_type, T>;
 			using node_alloc = typename allocator::template rebind<node_type>::other;
 			using node_pointer_alloc = typename allocator::template rebind<node_type*>::other;
-			using storage_policy_type = storage_p<key_type, node_type>;
+			using storage_policy_type = storage_p<key_type, node_type, comp>;
 
 			// выделение памяти под узлы таблицы
 			node_type ** allocate_nodes(size_type count) {
@@ -387,6 +388,13 @@ namespace shti {
 					++(*this);
 					return temp;
 				}
+				_iterator & operator+(size_type n) {
+					_iterator temp = *this;
+					for (size_type i = 0; i < n; ++i) {
+						++(temp);
+					}
+					return temp;
+				}
 
 				node_pointer get_node() const { return cur_node; }
 				table_type * get_table() const { return _owner; }
@@ -408,6 +416,7 @@ namespace shti {
 				hash_policy = new rehash_p();
 				_storage_policy = new storage_policy_type();
 				data = allocate_nodes(_capacity);
+				_mask = _capacity - 1;
 			}
 			basic_hash_table(const basic_hash_table & _other) : 
 				_capacity(_other._capacity) , 
@@ -416,6 +425,7 @@ namespace shti {
 				hasher(_other.hasher),
 				np_alloc(_other.np_alloc), 
 				n_alloc(_other.n_alloc),
+				_mask(_other._mask),
 				comparator(_other.comparator) {
 				data = copy_nodes(_other.data, _other._capacity);
 				hash_policy = new rehash_p(*_other.hash_policy);
@@ -426,6 +436,7 @@ namespace shti {
 				std::swap(data, _other.data);
 				std::swap(_size, _other._size);
 				std::swap(_capacity, _other._capacity);
+				std::swap(_mask, _other._mask);
 				rehash_coef = std::move(_other.rehash_coef);
 				hasher = std::move(_other.hasher);
 				np_alloc = std::move(_other.np_alloc);
@@ -455,6 +466,7 @@ namespace shti {
 					deallocate_nodes(data, _capacity);
 					_capacity = _other._capacity;
 					_size = _other._size;
+					_mask = _other._mask;
 					rehash_coef = _other.rehash_coef;
 					hasher = _other.hasher;
 					np_alloc =_other.np_alloc;
@@ -475,6 +487,7 @@ namespace shti {
 					std::swap(data, _other.data);
 					std::swap(_capacity, _other._capacity);
 					std::swap(_size, _other._size);
+					_mask = std::move(_other._mask);
 					rehash_coef = _other.rehash_coef;
 					hasher = std::move(_other.hasher);
 					np_alloc = std::move(_other.np_alloc);
@@ -531,7 +544,7 @@ namespace shti {
 				size_t hash_val = hasher(_key);
 				size_type index = hash_val & _mask; // получаем индекс
 				if (_storage_policy->can_insert(data[index], _key)) {
-					if (hash_policy->check_currient_size(_size + 1, _capacity, rehash_coef)) {
+					if (data[index] == nullptr && hash_policy->check_currient_size(_size + 1, _capacity, rehash_coef)) {
 						rehash(hash_policy->get_next_size(_size + 1, _capacity));
 					}
 					_size++;
@@ -627,9 +640,7 @@ namespace shti {
 						if (cur) {
 							return iterator(this, cur, itr.get_index());
 						}
-						else {
-							return iterator(this, itr.get_index() + 1);
-						}
+						return iterator(this, itr.get_index() + 1);
 					}
 					perv = cur;
 					cur = cur->next;
@@ -675,6 +686,8 @@ namespace shti {
 				std::swap(n_alloc, ht.n_alloc);
 				std::swap(hash_policy, ht.hash_policy);
 				std::swap(comparator, ht.comparator);
+				std::swap(_storage_policy, ht._storage_policy);
+				std::swap(_mask, ht._mask);
 			}
 
 			// возвращает колличество элементов
@@ -790,8 +803,8 @@ namespace shti {
 						cur_node->next = temp_data[index];
 						temp_data[index] = cur_node;
 						cur_node = next;
+						data[i] = nullptr;
 					}
-					data[i] = nullptr;
 				}
 				deallocate_nodes(data, _capacity);
 				_capacity = new_size;
@@ -802,14 +815,14 @@ namespace shti {
 			// переход от ключа к индексу
 			template <typename key_type>
 			size_type key_to_index(const key_type & key) {
-				return hasher(key) % _capacity;
+				return hasher(key) & _mask;
 			}
 
 			node_type ** data; // данные
 			size_type _capacity = 4; // размер таблицы
 			size_type _mask = _capacity - 1; // маска
 			size_type _size = 0; // текущее число элементов
-			float rehash_coef = 0.8; // коэфициент при котором размер таблицы будет меняться
+			float rehash_coef = 0.9; // коэфициент при котором размер таблицы будет меняться
 			hash_f hasher; // хеш функция 
 			node_alloc n_alloc;
 			node_pointer_alloc np_alloc;

@@ -6,7 +6,7 @@
 void basic_operations_test() {
 	std::cout << "=== basic operations test begin ===" << std::endl;
 	shti::hash_multitable<int, std::string> table;
-	table.insert({ 1, "one"});
+	table.insert({ 1, "one" });
 	table.insert({ 2, "two" });
 	table.insert({ 3, "three" });
 	assert(table.size() == 3);
@@ -26,7 +26,7 @@ void basic_operations_test() {
 		table.at(456);
 		assert(false);
 	}
-	catch(shti::error_type err){
+	catch (shti::error_type err) {
 		assert(err == shti::error_type::out_of_range);
 	}
 	std::cout << "> at test complete" << std::endl;
@@ -36,7 +36,7 @@ void basic_operations_test() {
 void iterator_test() {
 	std::cout << "=== iterator test begin ===" << std::endl;
 	shti::hash_table<int, int> table;
-	table.insert({ { 1,1 }, {2,2} , {3,2}, {4,1}, {5,1} });
+	table.insert({ { 1,1 },{ 2,2 } ,{ 3,2 },{ 4,1 },{ 5,1 } });
 	int count = 0;
 	for (auto it = table.begin(); it != table.end(); ++it) {
 		count++;
@@ -47,6 +47,9 @@ void iterator_test() {
 		count++;
 	}
 	assert(count == 5);
+	auto res1 = table.begin();
+	auto res2 = res1 + 2;
+	assert(std::distance(res1, res2) == 2);
 	std::cout << "=== iterator test passed ===" << std::endl << std::endl;
 }
 
@@ -57,14 +60,14 @@ void insert_test() {
 	table.insert({ 2, "two" });
 	table.insert({ 3, "three" });
 	table.insert({ 4, "chetiri" });
-	auto res_ins_1 = table.insert({ 1, "2"});
+	auto res_ins_1 = table.insert({ 1, "2" });
 	assert(res_ins_1.second == false);
 	std::cout << "> insert(value_pair) passed" << std::endl;
-	auto res_ins_or_ass = table.insert_or_assign({ 1 , "2"});
+	auto res_ins_or_ass = table.insert_or_assign({ 1 , "2" });
 	assert(res_ins_or_ass.second != false);
 	assert(table.find(1)->second == "2");
 	std::cout << "> insert_or_assign passed" << std::endl;
-	table.insert({ {5, "3"}, {6, "6"}, {7, "45"} });
+	table.insert({ { 5, "3" },{ 6, "6" },{ 7, "45" } });
 	assert(table.size() == 7);
 	assert(table.find(5) != table.end());
 	assert(table.find(6) != table.end());
@@ -247,3 +250,4 @@ int main() {
 	std::cout << "=== Test passed ===" << std::endl;
 	return 0;
 }
+
