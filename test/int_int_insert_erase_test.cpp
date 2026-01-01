@@ -111,7 +111,7 @@ duration ht_test_insert_erase(size_t items_count) {
 	shti::hash_table<int, int> ht;
 	auto start_ht = std::chrono::steady_clock::now();
 	for (size_t i = 0; i < items_count; ++i) {
-		ht.insert(i, i);
+		ht.insert({ i, i });
 	}
 	for (size_t i = 0; i < items_count; ++i) {
 		ht.erase(i);
@@ -128,7 +128,7 @@ duration ht_test_insert_erase_ch(size_t items_count) {
 	shti::hash_table<int, int, int_hash> ht;
 	auto start_ht = std::chrono::steady_clock::now();
 	for (size_t i = 0; i < items_count; ++i) {
-		ht.insert(i, i);
+		ht.insert({ i, i });
 	}
 	for (size_t i = 0; i < items_count; ++i) {
 		ht.erase(i);
